@@ -1,0 +1,27 @@
+classDiagram
+    class Cliente {
+        +int idCliente
+        +string nombre
+        +string email
+        +string telefono
+        +registrarReserva()
+    }
+
+    class Pista {
+        +int idPista
+        +int capacidadSugerida
+        +isDisponible(fecha, hora) bool
+    }
+
+    class Reserva {
+        +int idReserva
+        +DateTime inicioPrevisto
+        +DateTime finPrevisto
+        +string estado
+        +checkIn()
+        +finalizar()
+        +cancelar()
+    }
+
+    Cliente "1" -- "*" Reserva : realiza
+    Reserva "1" -- "1" Pista : asignada a
