@@ -1,0 +1,76 @@
+erDiagram
+    CLIENTE ||--o{ RESERVA : realiza
+    PISTA ||--o{ RESERVA : es_reservada
+    PISTA ||--o{ TARIFA_PISTA : tiene
+    RESERVA }o--|| TARIFA_PISTA : aplica
+    RESERVA ||--o{ PARTIDA : registra
+    PARTIDA ||--|{ PARTICIPACION_PARTIDA : tiene
+    JUGADOR ||--o{ PARTICIPACION_PARTIDA : participa_en
+    PARTICIPACION_PARTIDA ||--o{ RESULTADO_TURNO : registra
+
+    CLIENTE {
+        int id_cliente PK
+        string nombre
+        string direccion
+        string telefono
+        string email
+    }
+
+    PISTA {
+        int id_pista PK
+        int capacidad_maxima
+    }
+
+    TARIFA_PISTA {
+        int id_tarifa_pista PK
+        int id_pista FK
+        string dia_semana
+        time hora_inicio_validez
+        time hora_fin_validez
+        date fecha_inicio_vigencia
+        date fecha_fin_vigencia
+        flat precio_base
+    }
+
+    RESERVA {
+        int id_reserva PK
+        int id_cliente FK
+        int id_pista FK
+        int id_tarifa_aplicada FK
+        date fecha_turno
+        time hora_inicio_prevista
+        time hora_fin_prevista
+        datetime hora_inicio_real
+        datetime hora_fin_real
+        int cantidad_jugadores
+        float costo_total_calculado
+        string estado
+    }
+
+    PARTIDA {
+        int id_partida PK
+        int id_reserva FK
+        int numero_orden
+        datetime fecha_hora_inicio
+        datetime fecha_hora_fin
+    }
+
+    JUGADOR {
+        int id_jugador PK
+        string nombre
+    }
+
+    PARTICIPACION_PARTIDA {
+        int id_participacion PK
+        int id_partida FK
+        int id_jugador FK
+        int puntaje_total
+    }
+
+    RESULTADO_TURNO {
+        int id_resultado_turno PK
+        int id_participacion FK
+        int numero_turno
+        int pinos_derribados
+        int puntaje_acumulado
+    }

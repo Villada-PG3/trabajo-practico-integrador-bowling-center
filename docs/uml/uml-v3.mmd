@@ -1,0 +1,75 @@
+classDiagram
+    class Cliente {
+        +int idCliente
+        +string nombre
+        +string email
+        +string telefono
+        +registrarReserva()
+    }
+
+    class Pista {
+        +int idPista
+        +int capacidadMaxima
+        +isDisponible(fecha, hora) bool
+    }
+
+    class Tarifa {
+        +int idTarifa
+        +string diaSemana
+        +Time horaInicioValidez
+        +Time horaFinValidez
+        +Date fechaInicioVigencia
+        +Date fechaFinVigencia
+        +decimal precioBase
+        +calcularPrecio(reserva) float
+    }
+
+    class Reserva {
+        +int idReserva
+        +Date fechaTurno
+        +DateTime inicioPrevisto
+        +DateTime finPrevisto
+        +DateTime inicioReal
+        +DateTime finReal
+        +string estado
+        +int cantidadJugadores
+        +decimal costoTotal
+        +checkIn()
+        +finalizar()
+        +pagar()
+        +cancelar()
+        +calcularCostoTotal() float
+    }
+
+    class Partida {
+        +int idPartida
+        +int numeroOrden
+        +DateTime inicio
+        +DateTime fin
+        +registrarResultado(jugador, numeroTurno, pinos)
+    }
+
+    class Jugador {
+        +int idJugador
+        +string nombre
+    }
+
+    class ParticipacionPartida {
+        +int puntajeTotal
+        +actualizarPuntaje()
+    }
+
+    class ResultadoTurno {
+        +int numeroTurno
+        +int pinosDerribados
+        +int puntajeAcumulado
+    }
+
+    Cliente "1" -- "*" Reserva : realiza
+    Pista "1" -- "*" Reserva : se reserva en
+    Pista "1" -- "*" Tarifa : tiene
+    Reserva "1" -- "1" Tarifa : usa
+    Reserva "1" -- "*" Partida : incluye
+    Partida "1" -- "*" ParticipacionPartida : tiene
+    Jugador "1" -- "*" ParticipacionPartida : participa en
+    ParticipacionPartida "1" -- "*" ResultadoTurno : registra
