@@ -1,1 +1,110 @@
-.
+.erDiagram
+    CLIENTE ||--o{ RESERVA : realiza
+    PISTA ||--o{ RESERVA : "es reservada"
+    TIPO_TARIFA ||--o{ TARIFA_PISTA : define
+    PISTA ||--o{ TARIFA_PISTA : tiene
+    RESERVA }o--|| TARIFA_PISTA : "aplica"
+    RESERVA ||--o{ PEDIDO_CAFETERIA : "contiene"
+    RESERVA ||--o{ PARTIDA : "registra"
+    PEDIDO_CAFETERIA ||--|{ DETALLE_PEDIDO : "incluye"
+    PRODUCTO_CAFETERIA ||--o{ DETALLE_PEDIDO : "se vende en"
+    PARTIDA ||--|{ PARTICIPACION_PARTIDA : "tiene"
+    JUGADOR ||--o{ PARTICIPACION_PARTIDA : "participa en"
+    PARTICIPACION_PARTIDA ||--|{ FRAME : "se desglosa en"
+    PISTA ||--o{ PARTIDA : "aloja"
+
+    CLIENTE {
+        int id_cliente PK
+        string nombre
+        string direccion
+        string telefono
+        string email
+    }
+
+    PISTA {
+        int id_pista PK
+        int capacidad_sugerida
+    }
+
+    TIPO_TARIFA {
+        int id_tipo_tarifa PK
+        string nombre_tarifa
+        string descripcion
+    }
+
+    TARIFA_PISTA {
+        int id_tarifa_pista PK
+        int id_pista FK
+        int id_tipo_tarifa FK
+        string dia_semana
+        time hora_inicio_validez
+        time hora_fin_validez
+        decimal precio_base
+        decimal factor_jugador_adicional
+    }
+
+    RESERVA {
+        int id_reserva PK
+        int id_cliente FK
+        int id_pista FK
+        int id_tarifa_aplicada FK
+        date fecha_reserva
+        time hora_inicio_prevista
+        time hora_fin_prevista
+        datetime hora_inicio_real
+        datetime hora_fin_real
+        int cantidad_jugadores_registrados
+        decimal costo_total_calculado
+        string estado
+    }
+
+    PRODUCTO_CAFETERIA {
+        int id_producto PK
+        string nombre
+        string descripcion
+        decimal precio
+    }
+
+    PEDIDO_CAFETERIA {
+        int id_pedido PK
+        int id_reserva FK
+        datetime fecha_hora_pedido
+    }
+
+    DETALLE_PEDIDO {
+        int id_detalle_pedido PK
+        int id_pedido FK
+        int id_producto FK
+        int cantidad
+        decimal subtotal
+    }
+
+    PARTIDA {
+        int id_partida PK
+        int id_reserva FK
+        int id_pista FK
+        datetime fecha_hora_inicio
+        datetime fecha_hora_fin
+    }
+
+    JUGADOR {
+        int id_jugador PK
+        string nombre
+    }
+
+    PARTICIPACION_PARTIDA {
+        int id_participacion PK
+        int id_partida FK
+        int id_jugador FK
+        int puntaje_total
+    }
+
+    FRAME {
+        int id_frame PK
+        int id_participacion FK
+        int numero_frame
+        int puntuacion_frame
+        int tiro1_pinos_derribados
+        int tiro2_pinos_derribados
+        int tiro3_pinos_derribados
+    }
