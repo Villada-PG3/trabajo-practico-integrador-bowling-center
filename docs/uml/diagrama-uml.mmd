@@ -1,1 +1,116 @@
-.
+classDiagram
+class TipoPista{
+    -str nombre
+    -str descripcion
+    -Decimal precio_hora
+    -int capacidad_maxima
+    -int duracion_minima
+    +validarPrecioHora()
+    +validarCapacidad()
+}
+
+class Cliente{
+    -str numeroCliente
+    -str nombre
+    -str direccion
+    -str telefono
+    -str email
+    +asignarDatos()
+    +validarEmail()
+}
+
+class Pista{
+    -int numero
+    -TipoPista tipo
+    +obtenerCapacidadMaxima()
+    +obtenerPrecioHora()
+    +obtenerDuracionMinima()
+    +estaDisponible(fecha, inicio, fin)
+}
+
+class Reserva{
+    -Cliente cliente
+    -Pista pista
+    -date fecha
+    -time horaInicio
+    -time horaFin
+    -str estado "pendiente_a_pago|cancelada|finalizada|pagada"
+    -int cantidadJugadores
+    -Decimal precioHora "snapshot"
+    +clean()
+    +calcularDuracion()
+    +calcularCostoPista()
+    +calcularCostoTotal()
+    +validarDisponibilidad()
+    +validarCapacidad()
+}
+
+class Producto{
+    -str nombre
+    -str descripcion
+    -Decimal precio
+    -str tipo "choices: comida|bebida"
+    +validarPrecio()
+}
+
+class Pedido{
+    -Reserva reserva
+    -datetime fechaHoraPedido
+    -str estado "abierto|cerrado|cancelado"
+    +agregarDetalle()
+    +calcularTotal()
+    +cerrar()
+}
+
+class DetallePedido{
+    -Pedido pedido
+    -Producto producto
+    -int cantidad
+    -Decimal precioUnitario "snapshot"
+    +calcularSubtotal()
+    +validarCantidad()
+}
+
+class Partida{
+    -Reserva reserva "la pista sale de la reserva"
+    -int numero
+    -datetime fechaHoraInicio
+    -str estado "en_curso|finalizada"
+    +agregarJugador()
+    +obtenerGanador()
+}
+
+class Jugador{
+    -str nombre
+    -Cliente cliente "nulable, 0..1"
+    +esCliente()
+}
+
+class Participacion{
+    -Partida partida
+    -Jugador jugador
+    +calcularPuntajeTotal()
+}
+
+class Lanzamiento{
+    -Participacion participacion
+    -int numeroFrame "1..10"
+    -int numeroLanzamiento "1..3 (3ro solo en frame 10)"
+    -int pinosDerribados "0..10"
+    +esStrike()
+    +esSpare()
+}
+
+TipoPista "1" <-- "0..*" Pista : clasifica
+Pista "1" <-- "0..*" Reserva : sobre
+Cliente "1" <-- "0..*" Reserva : realiza
+Reserva "1" --> "1..*" Partida : tiene
+Partida "1" --> "1..*" Participacion : tiene
+
+Reserva "1" --> "0..*" Pedido : genera
+Pedido "1" --> "1..*" DetallePedido : contiene
+DetallePedido "0..*" --> "1" Producto : se pide
+
+Jugador "1" <-- "0..*" Participacion : participa
+Participacion "1" --> "0..*" Lanzamiento : se compone de
+Cliente "0..1" <--> "0..1" Jugador : puede ser
