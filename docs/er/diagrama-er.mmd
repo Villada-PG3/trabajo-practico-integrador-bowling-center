@@ -10,33 +10,36 @@ erDiagram
     JUGADOR ||--o{ PARTICIPACION : "participa en"
     PARTICIPACION ||--o{ LANZAMIENTO : "se compone de"
     CLIENTE |o--o| JUGADOR : "puede ser"
+    ESTADO_RESERVA ||--o{ RESERVA : clasifica
+    ESTADO_PEDIDO ||--o{ PEDIDO : clasifica
+    ESTADO_PARTIDA ||--o{ PARTIDA : clasifica
 
     TIPO_PISTA {
         int id_tipo_pista PK
         varchar nombre "SMALL / MEDIUM / LARGE"
         varchar descripcion
-        decimal precio_hora "precio vigente por hora"
-        int capacidad_maxima "jugadores por pista"
-        int duracion_minima "mín. de reserva en minutos"
+        decimal precio_hora
+        int capacidad_maxima
+        int duracion_minima
     }
 
     PISTA {
-        int numero_pista PK "único"
+        int numero_pista PK
         int id_tipo_pista FK
     }
 
     CLIENTE {
-        int numero_cliente PK "único, auto"
+        int numero_cliente PK
         varchar nombre
         varchar direccion
         varchar telefono
-        varchar email "único"
+        varchar email
     }
 
     JUGADOR {
         int id_jugador PK
         varchar nombre
-        int numero_cliente FK "nulo si no es cliente, UNIQUE"
+        int numero_cliente FK "nulable, UNIQUE (0..1)"
     }
 
     RESERVA {
@@ -45,41 +48,57 @@ erDiagram
         int numero_pista FK
         date fecha
         time hora_inicio
-        time hora_fin "duración explícita de la reserva"
-        enum estado "pendiente_a_pago | cancelada | finalizada | pagada"
-        int cantidad_jugadores "estimada al reservar"
-        decimal precio_hora "snapshot del precio al reservar"
+        time hora_fin
+        int id_estado_reserva FK
+        int cantidad_jugadores
+        decimal precio_hora
+    }
+
+    ESTADO_RESERVA {
+        int id_estado_reserva PK
+        varchar nombre
+        varchar descripcion
     }
 
     PRODUCTO {
         int id_producto PK
         varchar nombre
         varchar descripcion
-        decimal precio "precio vigente"
-        enum tipo "comida | bebida (choices, no es tabla)"
+        decimal precio
+        varchar tipo
     }
 
     PEDIDO {
         int id_pedido PK
         int id_reserva FK
         datetime fecha_hora_pedido
-        enum estado "abierto | cerrado | cancelado"
+        int id_estado_pedido FK
+    }
+
+    ESTADO_PEDIDO {
+        int id_estado_pedido PK
+        varchar nombre
     }
 
     DETALLE_PEDIDO {
         int id_detalle PK
         int id_pedido FK
         int id_producto FK
-        int cantidad "mayor a 0"
-        decimal precio_unitario "snapshot del precio al pedir"
+        int cantidad
+        decimal precio_unitario
     }
 
     PARTIDA {
         int id_partida PK
         int id_reserva FK
-        int numero "1..N dentro de la reserva, UNIQUE con reserva"
+        int numero
         datetime fecha_hora_inicio
-        enum estado "en_curso | finalizada"
+        int id_estado_partida FK
+    }
+
+    ESTADO_PARTIDA {
+        int id_estado_partida PK
+        varchar nombre
     }
 
     PARTICIPACION {
@@ -91,7 +110,7 @@ erDiagram
     LANZAMIENTO {
         int id_lanzamiento PK
         int id_participacion FK
-        int numero_frame "1..10"
-        int numero_lanzamiento "1..3 (el 3ro solo en frame 10)"
-        int pinos_derribados "0..10"
+        int numero_frame
+        int numero_lanzamiento
+        int pinos_derribados
     }

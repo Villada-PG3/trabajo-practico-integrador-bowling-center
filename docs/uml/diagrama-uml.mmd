@@ -1,4 +1,5 @@
 classDiagram
+
 class TipoPista{
     -str nombre
     -str descripcion
@@ -7,6 +8,18 @@ class TipoPista{
     -int duracion_minima
     +validarPrecioHora()
     +validarCapacidad()
+}
+
+class EstadoReserva{
+    -str nombre
+}
+
+class EstadoPedido{
+    -str nombre
+}
+
+class EstadoPartida{
+    -str nombre
 }
 
 class Cliente{
@@ -34,7 +47,7 @@ class Reserva{
     -date fecha
     -time horaInicio
     -time horaFin
-    -str estado "pendiente_a_pago|cancelada|finalizada|pagada"
+    -EstadoReserva estado
     -int cantidadJugadores
     -Decimal precioHora "snapshot"
     +clean()
@@ -56,7 +69,7 @@ class Producto{
 class Pedido{
     -Reserva reserva
     -datetime fechaHoraPedido
-    -str estado "abierto|cerrado|cancelado"
+    -EstadoPedido estado
     +agregarDetalle()
     +calcularTotal()
     +cerrar()
@@ -75,7 +88,7 @@ class Partida{
     -Reserva reserva "la pista sale de la reserva"
     -int numero
     -datetime fechaHoraInicio
-    -str estado "en_curso|finalizada"
+    -EstadoPartida estado
     +agregarJugador()
     +obtenerGanador()
 }
@@ -102,6 +115,10 @@ class Lanzamiento{
 }
 
 TipoPista "1" <-- "0..*" Pista : clasifica
+EstadoReserva "1" <-- "0..*" Reserva : clasifica
+EstadoPedido "1" <-- "0..*" Pedido : clasifica
+EstadoPartida "1" <-- "0..*" Partida : clasifica
+
 Pista "1" <-- "0..*" Reserva : sobre
 Cliente "1" <-- "0..*" Reserva : realiza
 Reserva "1" --> "1..*" Partida : tiene
