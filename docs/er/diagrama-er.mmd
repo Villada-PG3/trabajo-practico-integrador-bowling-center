@@ -1,1 +1,116 @@
-.
+erDiagram
+    CLIENTE ||--o{ RESERVA : realiza
+    TIPO_PISTA ||--o{ PISTA : clasifica
+    PISTA ||--o{ RESERVA : "es reservada"
+    RESERVA ||--|{ PARTIDA : "tiene (min 1)"
+    RESERVA ||--o{ PEDIDO : genera
+    PEDIDO ||--|{ DETALLE_PEDIDO : contiene
+    PRODUCTO ||--o{ DETALLE_PEDIDO : "aparece en"
+    PARTIDA ||--|{ PARTICIPACION : tiene
+    JUGADOR ||--o{ PARTICIPACION : "participa en"
+    PARTICIPACION ||--o{ LANZAMIENTO : "se compone de"
+    CLIENTE |o--o| JUGADOR : "puede ser"
+    ESTADO_RESERVA ||--o{ RESERVA : clasifica
+    ESTADO_PEDIDO ||--o{ PEDIDO : clasifica
+    ESTADO_PARTIDA ||--o{ PARTIDA : clasifica
+
+    TIPO_PISTA {
+        int id_tipo_pista PK
+        varchar nombre "SMALL / MEDIUM / LARGE"
+        varchar descripcion
+        decimal precio_hora
+        int capacidad_maxima
+        int duracion_minima
+    }
+
+    PISTA {
+        int numero_pista PK
+        int id_tipo_pista FK
+    }
+
+    CLIENTE {
+        int numero_cliente PK
+        varchar nombre
+        varchar direccion
+        varchar telefono
+        varchar email
+    }
+
+    JUGADOR {
+        int id_jugador PK
+        varchar nombre
+        int numero_cliente FK "nulable, UNIQUE (0..1)"
+    }
+
+    RESERVA {
+        int id_reserva PK
+        int numero_cliente FK
+        int numero_pista FK
+        date fecha
+        time hora_inicio
+        time hora_fin
+        int id_estado_reserva FK
+        int cantidad_jugadores
+        decimal precio_hora
+    }
+
+    ESTADO_RESERVA {
+        int id_estado_reserva PK
+        varchar nombre
+        varchar descripcion
+    }
+
+    PRODUCTO {
+        int id_producto PK
+        varchar nombre
+        varchar descripcion
+        decimal precio
+        varchar tipo
+    }
+
+    PEDIDO {
+        int id_pedido PK
+        int id_reserva FK
+        datetime fecha_hora_pedido
+        int id_estado_pedido FK
+    }
+
+    ESTADO_PEDIDO {
+        int id_estado_pedido PK
+        varchar nombre
+    }
+
+    DETALLE_PEDIDO {
+        int id_detalle PK
+        int id_pedido FK
+        int id_producto FK
+        int cantidad
+        decimal precio_unitario
+    }
+
+    PARTIDA {
+        int id_partida PK
+        int id_reserva FK
+        int numero
+        datetime fecha_hora_inicio
+        int id_estado_partida FK
+    }
+
+    ESTADO_PARTIDA {
+        int id_estado_partida PK
+        varchar nombre
+    }
+
+    PARTICIPACION {
+        int id_participacion PK
+        int id_partida FK
+        int id_jugador FK
+    }
+
+    LANZAMIENTO {
+        int id_lanzamiento PK
+        int id_participacion FK
+        int numero_frame
+        int numero_lanzamiento
+        int pinos_derribados
+    }
