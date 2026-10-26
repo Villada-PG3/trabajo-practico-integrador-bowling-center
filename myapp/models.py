@@ -41,26 +41,63 @@ class TipoPista(models.Model):
     def __str__(self):
         return self.nombre
 
-    class EstadoReserva(models.Model):
-        id_estado_reserva = models.AutoField(primary_key=True)
-        nombre = models.CharField(max_length=50, unique=True)
-        descripcion = models.TextField(blank=True)
+class EstadoReserva(models.Model):
+    id_estado_reserva = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=50, unique=True)
+    descripcion = models.TextField(blank=True)
 
-        def __str__(self):
-            return self.nombre
+    def __str__(self):
+        return self.nombre
 
-    class EstadoPedido(models.Model):
-        id_estado_pedido = models.AutoField(primary_key=True)
-        nombre = models.CharField(max_length=50, unique=True)
+class EstadoPedido(models.Model):
+    id_estado_pedido = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=50, unique=True)
 
-        def __str__(self):
-            return self.nombre
+    def __str__(self):
+        return self.nombre
 
-    class EstadoPartida(models.Model):
-        id_estado_partida = models.AutoField(primary_key=True)
-        nombre = models.CharField(max_length=50, unique=True)
+class EstadoPartida(models.Model):
+    id_estado_partida = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=50, unique=True)
 
-        def __str__(self):
-            return self.nombre
+    def __str__(self):
+        return self.nombre
 
+class Cliente(models.Model):
+    id_cliente = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    direccion = models.CharField(max_length=200)
+    telefono = models.CharField(max_length=30)
+    email = models.CharField(max_length=100)
+
+    def asignarDatos(self, nombre, direccion, telefono, email):
+        self.nombre = nombre
+        self.direccion = direccion
+        self.telefono = telefono
+        self.email = email
+
+    def validarEmail(self):
+        from django.core.validators import validate_email
+
+        validate_email(self.email)
+
+    def __str__(self):
+        return self.nombre
+
+class Jugador(models.Model):
+    id_jugador = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    cliente = models.OneToOneField(
+        Cliente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="Jugador"
+    )
+
+    def esCliente(self):
+        return self.cliente is not None
+
+    def __str__(self):
+        return self.nombre
     
