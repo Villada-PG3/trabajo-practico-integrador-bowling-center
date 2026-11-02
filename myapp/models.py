@@ -22,7 +22,7 @@ class TipoPista(models.Model):
         validators=[MinValueValidator(1)]
     )
 
-    def clear(self):
+    def clean(self):
         super().clean()
 
         if self.nombre and self.nombre not in ["SMALL", "MEDIUM", "LARGE"]:
