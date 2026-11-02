@@ -336,12 +336,55 @@ class Participacion(models.Model):
         ]
 
     def calcularPuntajeTotal(self):
-        total = 0
+        # 1) Traer todos los lanzamientos de este jugador, ordenados por frame
+        lanzamientos = self.lanzamientos.order_by("numero_frame", "numero_lanzamiento")
 
-        for lanzamiento in self.lanzamientos.all():
-            total += lanzamiento.pinos_derribados
+        # 2) Armar una lista simple con los pinos de cada lanzamiento
+        tiros = []
+        for lanz in lanzamientos:
+            tiros.append(lanz.pinos_derribados)
 
-        return total
+        # 3) Recorrer la partida frame por frame (son 10 frames)
+        puntaje_total = 0
+        posicion = 0  # en qué tiro de la lista vamos
+
+        for numero_frame in range(10):
+            if posicion >= len(tiros):
+                break  # si ya no hay mas tiros, terminamos
+
+            primer_tiro = tiros[posicion]
+
+            # CASO STRIKE: 10 pinos en el primer tiro del frame
+            if primer_tiro == 10:
+                # el strike vale 10 + los 2 tiros siguientes
+                tiro_siguiente = 0
+                if posicion + 1 < len(tiros):
+                    tiro_siguiente = tiros[posicion + 1]
+
+                tiro_posterior = 0
+                if posicion + 2 < len(tiros):
+                    tiro_posterior = tiros[posicion + 2]
+
+                puntaje_total += 10 + tiro_siguiente + tiro_posterior
+                posicion += 1  # el strike ocupa un solo tiro del frame
+
+            # CASO SPARE: 10 pinos sumando los 2 tiros del frame
+            elif primer_tiro + tiros[posicion + 1] == 10:
+                # el spare vale 10 + el proximo tiro
+                tiro_siguiente = 0
+                if posicion + 2 < len(tiros):
+                    tiro_siguiente = tiros[posicion + 2]
+
+                puntaje_total += 10 + tiro_siguiente
+                posicion += 2  # el spare ocupa los 2 tiros del frame
+
+            # CASO FRAME COMUN: se suman los pinos de los 2 tiros
+            else:
+                segundo_tiro = tiros[posicion + 1]
+                puntaje_total += primer_tiro + segundo_tiro
+                posicion += 2
+
+        return puntaje_total
 
     def __str__(self):
         return f"{self.jugador} - {self.partida}"
@@ -353,6 +396,7 @@ class Lanzamiento(models.Model):
         on_delete=models.CASCADE,
         related_name="lanzamientos"
     )
+    participacion_id: int | None
     numero_frame = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)]
     )
@@ -424,23 +468,26 @@ class Lanzamiento(models.Model):
             and self.pinos_derribados == 10
         )
 
-    def esSpare(self):
-        if self.numero_frame == 10 or self.numero_lanzamiento != 2:
-            return False
+def esSpare(self):
+    if self.numero_frame == 10 or self.numero_lanzamiento != 2:
+        return False
 
-        primero = Lanzamiento.objects.filter(
-            participacion_id=self.participacion_id,
-            numero_frame=self.numero_frame,
-            numero_lanzamiento=1
-        ).first()
+    if self.participacion_id is None:
+        return False
 
-        if primero is None:
-            return False
+    primero = Lanzamiento.objects.filter(
+        participacion_id=self.participacion_id,
+        numero_frame=self.numero_frame,
+        numero_lanzamiento=1
+    ).first()
 
-        return (
-            primero.pinos_derribados + self.pinos_derribados == 10
-            and primero.pinos_derribados < 10
-        )
+    if primero is None:
+        return False
+
+    return (
+        primero.pinos_derribados + self.pinos_derribados == 10
+        and primero.pinos_derribados < 10
+    )
 
     def __str__(self):
         return (
