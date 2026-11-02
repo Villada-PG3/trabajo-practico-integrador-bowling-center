@@ -463,31 +463,41 @@ class Lanzamiento(models.Model):
             raise ValidationError(errores)
 
     def esStrike(self):
+        # Para ser strike hay que derribar los 10 pinos
+        if self.pinos_derribados != 10:
+            return False
+
+        # En los frames 1 al 9, solo el primer lanzamiento puede ser strike
+        if self.numero_frame < 10:
+            return self.numero_lanzamiento == 1
+
+        # En el frame 10 la pista se resetea con cada strike o spare,
+        # asi que el 2do y el 3er lanzamiento tambien pueden ser strike
+        return True
+
+    def esSpare(self):
+        # El spare es siempre el segundo lanzamiento del frame
+        if self.numero_lanzamiento != 2:
+            return False
+
+        if self.participacion_id is None:
+            return False
+
+        # Buscamos el primer lanzamiento de este mismo frame
+        primero = Lanzamiento.objects.filter(
+            participacion_id=self.participacion_id,
+            numero_frame=self.numero_frame,
+            numero_lanzamiento=1
+        ).first()
+
+        if primero is None:
+            return False
+
+        # Es spare si ambos lanzamientos suman 10 y el primero no fue strike
         return (
-            self.numero_lanzamiento == 1
-            and self.pinos_derribados == 10
+            primero.pinos_derribados < 10
+            and primero.pinos_derribados + self.pinos_derribados == 10
         )
-
-def esSpare(self):
-    if self.numero_frame == 10 or self.numero_lanzamiento != 2:
-        return False
-
-    if self.participacion_id is None:
-        return False
-
-    primero = Lanzamiento.objects.filter(
-        participacion_id=self.participacion_id,
-        numero_frame=self.numero_frame,
-        numero_lanzamiento=1
-    ).first()
-
-    if primero is None:
-        return False
-
-    return (
-        primero.pinos_derribados + self.pinos_derribados == 10
-        and primero.pinos_derribados < 10
-    )
 
     def __str__(self):
         return (
