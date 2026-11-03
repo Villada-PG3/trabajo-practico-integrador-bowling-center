@@ -124,7 +124,7 @@ class Pista(models.Model):
             fecha=fecha,
             hora_inicio__lt=fin,
             hora_fin__gt=inicio
-        ).exclude(estado__nombre="Cancelada")
+        ).exclude(estado__nombre="cancelada")
 
         return not reservas.exists()
 
@@ -577,7 +577,7 @@ class Pedido(models.Model):
         return total
 
     def cerrar(self):
-        self.estado = EstadoPedido.objects.get(nombre="Cerrado")
+        self.estado = EstadoPedido.objects.get(nombre="cerrado")
         self.full_clean()
         self.save()
 
