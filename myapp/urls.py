@@ -11,4 +11,19 @@ urlpatterns = [
         views.DisponibilidadView.as_view(),
         name="disponibilidad",
     ),
+    path(
+        "mi-reserva/",
+        views.ConsultaReservaView.as_view(),
+        name="consulta_reserva",
+    ),
+    path(
+        "mi-reserva/<str:codigo>/",
+        views.DetalleReservaView.as_view(),
+        name="detalle_reserva",
+    ),
+    path(
+        "mi-reserva/<str:codigo>/cancelar/",
+        views.CancelarReservaView.as_view(),
+        name="cancelar_reserva",
+    ),
 ]

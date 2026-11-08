@@ -79,3 +79,29 @@ class ReservaForm(forms.ModelForm):
                 f"(${pista.obtenerPrecioHora()}/h)"
             )
         )
+
+
+class BuscarReservaForm(forms.Form):
+    """El cliente escribe el codigo que le dimos al reservar."""
+
+    codigo = forms.CharField(
+        max_length=8,
+        label="Codigo de reserva",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Ej: 7KQ2M9XA",
+                "autocomplete": "off",
+            }
+        ),
+    )
+
+    def clean_codigo(self):
+        codigo = self.cleaned_data["codigo"].strip().upper()
+
+        if not Reserva.objects.filter(codigo=codigo).exists():
+            raise forms.ValidationError(
+                "No encontramos ninguna reserva con ese codigo."
+            )
+
+        return codigo

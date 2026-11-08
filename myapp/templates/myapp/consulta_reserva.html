@@ -1,0 +1,52 @@
+{% extends 'myapp/base.html' %}
+
+{% block title %}Mi reserva — Pins & Co.{% endblock %}
+
+{% block content %}
+<div class="container-xl py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="bg-white card-rounded p-4 p-lg-5 shadow-sm">
+
+        <span class="badge-caps px-3 py-1 rounded-pill" style="background:#ffdbd2;color:var(--brand-primary);">
+          Consulta
+        </span>
+        <h1 class="font-heading fw-bold fs-3 text-dark mt-3 mb-2">Buscar mi reserva</h1>
+        <p class="small text-muted mb-4">
+          Ingresá el código que te dimos al reservar para ver los datos o cancelar.
+        </p>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} border-0 rounded-4" role="alert">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <label class="form-label small fw-semibold" for="{{ form.codigo.id_for_label }}">
+            {{ form.codigo.label }}
+          </label>
+          {{ form.codigo }}
+
+          {% for error in form.codigo.errors %}
+            <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+
+          <button class="btn btn-brand-primary w-100 mt-4 py-2" type="submit">
+            <i class="bi bi-search me-1"></i>
+            Buscar reserva
+          </button>
+        </form>
+
+        <p class="small text-muted mt-4 mb-0">
+          El código tiene 8 caracteres, por ejemplo <strong>7KQ2M9XA</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
