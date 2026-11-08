@@ -1,0 +1,167 @@
+:root {
+  --bs-primary: #e07a5f;
+  --bs-primary-rgb: 224, 122, 95;
+  --brand-primary: #9a442d;
+  --brand-primary-container: #e07a5f;
+  --brand-secondary: #386753;
+  --brand-secondary-bg: #b8ebd1;
+  --brand-tertiary: #765a28;
+  --brand-bg: #fbf8ff;
+  --brand-surface: #fbf8ff;
+  --brand-surface-low: #f4f2ff;
+  --brand-surface-container: #edecff;
+  --brand-surface-container-high: #e6e6ff;
+  --brand-dark: #1f1f2e;
+  --brand-text: #181a2e;
+  --brand-text-muted: #55423e;
+  --brand-outline: #88726d;
+  --bs-body-font-family: 'Plus Jakarta Sans', sans-serif;
+  --bs-body-bg: var(--brand-bg);
+  --bs-body-color: var(--brand-text);
+}
+
+body {
+  font-family: var(--bs-body-font-family);
+  background-color: var(--brand-bg);
+  color: var(--brand-text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Epilogue', serif;
+}
+
+.badge-caps {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.btn-brand-primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.75rem 1.75rem;
+  transition: all 0.25s ease-in-out;
+}
+
+.btn-brand-primary:hover {
+  background-color: var(--brand-primary-container);
+  border-color: var(--brand-primary-container);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -6px rgba(154, 68, 45, 0.3);
+}
+
+.btn-brand-light {
+  background-color: var(--brand-surface-container);
+  border: 1px solid transparent;
+  color: var(--brand-text);
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.75rem 1.75rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-brand-light:hover {
+  background-color: var(--brand-surface-container-high);
+  color: var(--brand-primary);
+}
+
+.btn-brand-coral {
+  background-color: var(--brand-primary-container);
+  border-color: var(--brand-primary-container);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 9999px;
+  transition: all 0.25s;
+}
+
+.btn-brand-coral:hover {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #ffffff;
+}
+
+.nav-pill-wrapper {
+  background-color: rgba(237, 236, 255, 0.75);
+  border-radius: 9999px;
+  padding: 4px;
+}
+
+.nav-pill-wrapper .nav-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-text-muted);
+  border-radius: 9999px;
+  padding: 6px 18px;
+  transition: all 0.2s;
+}
+
+.nav-pill-wrapper .nav-link.active,
+.nav-pill-wrapper .nav-link:hover {
+  background-color: #ffffff;
+  color: var(--brand-text);
+  box-shadow: 0 2px 8px rgba(43, 45, 66, 0.06);
+}
+
+.card-rounded {
+  border-radius: 1.5rem;
+  border: none;
+}
+
+.lane-pill-btn {
+  background-color: #ffffff;
+  border: 1px solid rgba(0,0,0,0.04);
+  border-radius: 1rem;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.lane-pill-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+.lane-pill-btn.active {
+  background-color: var(--brand-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(154,68,45,0.25);
+}
+
+.lane-pill-btn.active .lane-badge {
+  color: #ffdbd2 !important;
+}
+
+.lane-pill-btn.active .lane-state {
+  color: #ffffff !important;
+}
+
+.glass-card {
+  background: rgba(251, 248, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1rem;
+}
+
+.dark-cta-card {
+  background-color: var(--brand-dark);
+  border-radius: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.icon-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

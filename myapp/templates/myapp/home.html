@@ -1,1 +1,278 @@
-.
+{% extends 'myapp/base.html' %}
+{% load static %}
+
+{% block title %}Pins & Co. — Bowling & Social Club{% endblock %}
+
+{% block content %}
+
+<!-- ======================= HERO ======================= -->
+<section class="py-5 my-lg-4" id="inicio">
+  <div class="container-xl">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3" style="background-color: var(--brand-surface-container-high);">
+          <span class="rounded-circle" style="width: 8px; height: 8px; background-color: var(--brand-secondary);"></span>
+          <span class="badge-caps" style="color: var(--brand-text-muted);">Social Club & Bowling Lounge</span>
+        </div>
+        <h1 class="display-4 fw-bold text-dark lh-sm mb-3">
+          El bowling como <br class="d-none d-sm-inline"/>
+          <span class="fst-italic fw-normal" style="color: var(--brand-primary);">nunca lo viviste.</span>
+        </h1>
+        <p class="fs-5 mb-4 pb-2" style="color: var(--brand-text-muted) !important; max-width: 520px; line-height: 1.6;">
+          Pistas de arce pulidas con esmero, cócteles de autor en copa fría y una atmósfera cálida diseñada para conversar sin prisa entre tirada y tirada.
+        </p>
+        <div class="d-flex flex-column flex-sm-row gap-3">
+          <a class="btn btn-brand-primary d-inline-flex align-items-center justify-content-center gap-2 shadow-sm" href="{% url 'myapp:reserva' %}">
+            <span>Reservar mi pista</span>
+            <i class="bi bi-arrow-right"></i>
+          </a>
+          <a class="btn btn-brand-light d-inline-flex align-items-center justify-content-center gap-2" href="#sobre-nosotros">
+            <i class="bi bi-play-circle fs-5"></i>
+            <span>Conoce el club</span>
+          </a>
+        </div>
+
+        <!-- Metrics -->
+        <div class="row g-3 pt-4 mt-3" style="max-width: 440px;">
+          <div class="col-4">
+            <div class="font-heading fs-3 fw-bold text-dark">8</div>
+            <div class="badge-caps" style="color: var(--brand-outline);">Pistas Boutique</div>
+          </div>
+          <div class="col-4">
+            <div class="font-heading fs-3 fw-bold" style="color: var(--brand-primary);">100%</div>
+            <div class="badge-caps" style="color: var(--brand-outline);">Madera de Arce</div>
+          </div>
+          <div class="col-4">
+            <div class="font-heading fs-3 fw-bold" style="color: var(--brand-secondary);">24+</div>
+            <div class="badge-caps" style="color: var(--brand-outline);">Tragos Clásicos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Image -->
+      <div class="col-lg-6">
+        <div class="position-relative overflow-hidden card-rounded shadow-lg" style="height: 480px; background-color: var(--brand-surface-container);">
+          <img alt="Interior Pins & Co" class="w-100 h-100 object-fit-cover"
+               src="https://lh3.googleusercontent.com/aida-public/AB6AXuDg4P-Q6t6ibVItQikKah5IZiPG8GPm0lRXetz2MliLYibkym2TfyJQmsSOB-AN5Rbtksa1HRdeA7M6uJ1h_GxnLgnyHe_Z_U8LJpLBDw_FJxhRd3svnYPIBJIMC4AXFyX-PLL2eWYcw_bmgbKAb-gC6NotkoBNrnlQVOY3LXWEhH8j5Fvg6XJnG-mDS2eCs8c-DPybNEZChKaU5xYbMdaSOOg1I7uXWRqTEeztDwrk0EIe1zMMRqZWw"/>
+          <div class="position-absolute bottom-0 start-0 end-0 p-3 p-sm-4"
+               style="background: linear-gradient(180deg, transparent 0%, rgba(24, 26, 46, 0.45) 100%);">
+            <div class="glass-card p-3 shadow d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-3">
+                <div class="icon-bubble" style="background-color: var(--brand-secondary-bg); color: var(--brand-secondary);">
+                  <i class="bi bi-cup-straw fs-5"></i>
+                </div>
+                <div>
+                  <div class="fw-bold text-dark lh-sm" style="font-size: 15px;">Barra Paradise Lounge</div>
+                  <div class="small" style="color: var(--brand-outline);">Negroni Smoked Maple & Tapas</div>
+                </div>
+              </div>
+              <span class="badge rounded-pill fw-bold" style="background-color: rgba(56, 103, 83, 0.15); color: var(--brand-secondary); font-size: 11px; letter-spacing: 0.05em;">
+                ABIERTO HOY
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SOBRE NOSOTROS ======================= -->
+<section class="py-5" id="sobre-nosotros" style="background-color: var(--brand-surface-low);">
+  <div class="container-xl py-lg-4">
+    <div class="row align-items-end justify-content-between mb-5 g-4">
+      <div class="col-lg-7">
+        <span class="badge-caps d-block mb-2" style="color: var(--brand-primary);">Nuestra Filosofía</span>
+        <h2 class="display-6 fw-bold text-dark mb-0">
+          El renacer del ocio pausado y la buena compañía.
+        </h2>
+      </div>
+      <div class="col-lg-5">
+        <p class="mb-0 fs-6" style="color: var(--brand-text-muted); line-height: 1.6;">
+          Inspirados en la época dorada de los 70 pero depurados con la serenidad del diseño contemporáneo: sin pantallas estruendosas ni luces de neón agresivas.
+        </p>
+      </div>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7">
+        <div class="bg-white card-rounded p-4 p-md-5 h-100 shadow-sm d-flex flex-column justify-content-between">
+          <div>
+            <div class="icon-bubble mb-4" style="background-color: #ffdbd2; color: var(--brand-primary);">
+              <i class="bi bi-bullseye fs-4"></i>
+            </div>
+            <h3 class="font-heading fw-bold fs-4 text-dark mb-3">Pistas pulidas a mano</h3>
+            <p class="fs-6 mb-4" style="color: var(--brand-text-muted); line-height: 1.6;">
+              Láminas de arce macizo con tratamiento acústico y cera natural. La bola rueda suave, el sonido del strike es seco, limpio y perfecto.
+            </p>
+          </div>
+          <div class="rounded-4 overflow-hidden position-relative" style="height: 240px;">
+            <img alt="Pistas de arce" class="w-100 h-100 object-fit-cover"
+                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPJ7tn5_z0fMq69VKvL4kvWWXzkB3IkKj2J04B4H5bkP6ZA7nDKne_UqQ-SKUY7Nc8zaRvDhWVZFtmrW2F9gS8OhuNs7ahgMoU9IMxQFPxJHsLpvSpdbS9bA7Vmh9X1m39VyLnfp4ADyNG3Xf3XoEUQDM94Smz4oB0Z3ZnXX28IV57Hi5JKpqXivaZs8St3aG7ED00JbhWGfv2XP4dHO17sK-25JPF32UZheYRFh3RZvfG65ENUkhl5Q"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="bg-white card-rounded p-4 p-md-5 h-100 shadow-sm d-flex flex-column justify-content-between">
+          <div>
+            <div class="icon-bubble mb-4" style="background-color: #bbeed4; color: var(--brand-secondary);">
+              <i class="bi bi-cup-straw fs-4"></i>
+            </div>
+            <h3 class="font-heading fw-bold fs-4 text-dark mb-3">Cocktails de autor</h3>
+            <p class="fs-6 mb-4" style="color: var(--brand-text-muted); line-height: 1.6;">
+              Nuestra barra central rescata aperitivos de vermut artesanal, tragos botánicos y cristalería fina servida directamente en tu mesa.
+            </p>
+          </div>
+          <div class="rounded-4 overflow-hidden position-relative" style="height: 240px;">
+            <img alt="Cócteles de autor" class="w-100 h-100 object-fit-cover"
+                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuhvqfA49CrEdkMal5SN_hCRI0WWO0-nn-xbe90UbDKKSu75r-PomGYQiNjNx9tuDrOxD_zaNJ-iQcmFR7TarbMntQSfdYNj7ybxnyhQUiGA-TM1S6GTIPthS7o2rpx90FaRnBxfXoaN65xoNcjv_UXXPt59SKYHorPxKjejPsPgpMqLMYsVrjetMMcNvKUp_RSTDNuZ4TZygOK5X7TWy3fOAbDuuh3cDo13hBuquvQpXu6UO7S2SdLQ"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column justify-content-between">
+          <div>
+            <div class="icon-bubble mb-3" style="background-color: var(--brand-surface-container); color: var(--brand-text);">
+              <i class="bi bi-soundwave fs-5"></i>
+            </div>
+            <h4 class="font-heading fw-bold fs-5 text-dark mb-2">Playlist Curada</h4>
+            <p class="small mb-0" style="color: var(--brand-text-muted); line-height: 1.5;">
+              Soul melódico, jazz fusion y ritmos analógicos reproducidos en altavoces de madera con calidez vinílica.
+            </p>
+          </div>
+          <div class="d-flex align-items-center gap-2 pt-4">
+            <div class="d-flex">
+              <span class="rounded-circle d-inline-flex align-items-center justify-content-center badge-caps" style="width: 28px; height: 28px; background-color: rgba(154,68,45,0.15); color: var(--brand-primary); margin-right: -4px;">LP</span>
+              <span class="rounded-circle d-inline-flex align-items-center justify-content-center badge-caps" style="width: 28px; height: 28px; background-color: rgba(56,103,83,0.15); color: var(--brand-secondary); margin-right: -4px;">Hi</span>
+              <span class="rounded-circle d-inline-flex align-items-center justify-content-center badge-caps" style="width: 28px; height: 28px; background-color: rgba(118,90,40,0.15); color: var(--brand-tertiary);">Fi</span>
+            </div>
+            <span class="small fw-semibold ms-2" style="color: var(--brand-outline);">Bespoke Acoustics</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column justify-content-between">
+          <div>
+            <div class="icon-bubble mb-3" style="background-color: var(--brand-surface-container); color: var(--brand-text);">
+              <i class="bi bi-shoe-prints fs-5"></i>
+            </div>
+            <h4 class="font-heading fw-bold fs-5 text-dark mb-2">Calzado en Piel Noble</h4>
+            <p class="small mb-0" style="color: var(--brand-text-muted); line-height: 1.5;">
+              Olvídate de los zapatos genéricos sintéticos. Ofrecemos zapatos en cuero beige y marrón recién higienizados en su caja de lino.
+            </p>
+          </div>
+          <div class="d-flex align-items-center gap-2 pt-4" style="color: var(--brand-secondary);">
+            <i class="bi bi-patch-check-fill fs-5"></i>
+            <span class="small fw-semibold">Incluido en cada turno</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column justify-content-between">
+          <div>
+            <div class="icon-bubble mb-3" style="background-color: var(--brand-surface-container); color: var(--brand-text);">
+              <i class="bi bi-egg-fried fs-5"></i>
+            </div>
+            <h4 class="font-heading fw-bold fs-5 text-dark mb-2">Bocados Gourmet</h4>
+            <p class="small mb-0" style="color: var(--brand-text-muted); line-height: 1.5;">
+              Mini brioches de pulled pork, tablas de quesos afinados y papas trufadas para picar entre juego sin ensuciar tus manos.
+            </p>
+          </div>
+          <div class="d-flex align-items-center gap-2 pt-4 text-dark">
+            <i class="bi bi-clock-history fs-5"></i>
+            <span class="small fw-semibold">Cocina continua</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PISTAS ======================= -->
+<section class="py-5" id="pistas" style="background-color: var(--brand-surface-low);">
+  <div class="container-xl py-4">
+    <div class="row align-items-end justify-content-between mb-5 g-4">
+      <div class="col-lg-7">
+        <span class="badge-caps d-block mb-2" style="color: var(--brand-primary);">Nuestras pistas</span>
+        <h2 class="display-6 fw-bold text-dark mb-0">
+          Cada pista, con su tarifa y su capacidad.
+        </h2>
+      </div>
+      <div class="col-lg-5">
+        <p class="mb-0 fs-6" style="color: var(--brand-text-muted); line-height: 1.6;">
+          Elegí el tipo de pista según cuántos son y cuánto tiempo quieren jugar. El precio se cobra por hora.
+        </p>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      {% for pista in pistas %}
+        <div class="col-md-6 col-lg-4">
+          <div class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge-caps" style="color: var(--brand-outline);">Pista {{ pista.numero_pista }}</span>
+                <span class="badge rounded-pill" style="background: var(--brand-secondary-bg); color: var(--brand-secondary); font-size: 11px;">Disponible</span>
+              </div>
+              <h3 class="font-heading fw-bold fs-5 text-dark mb-2">{{ pista.tipo_pista.nombre }}</h3>
+              <p class="small mb-4" style="color: var(--brand-text-muted); line-height: 1.5;">
+                {{ pista.tipo_pista.descripcion|default:"Pista de bowling con calzado incluido." }}
+              </p>
+            </div>
+            <div>
+              <div class="d-flex justify-content-between align-items-center small mb-3">
+                <span style="color: var(--brand-text-muted);">Hasta {{ pista.obtenerCapacidadMaxima }} jugadores</span>
+                <span class="fw-bold text-dark">$ {{ pista.obtenerPrecioHora }}<span class="fw-normal text-muted">/h</span></span>
+              </div>
+              <a class="btn btn-brand-light w-100" href="{% url 'myapp:reserva' %}">
+                Reservar esta pista
+              </a>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center py-5">
+          <p class="text-muted mb-0">Todavía no hay pistas cargadas. Volvé en un rato.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ======================= CTA FINAL ======================= -->
+<section class="py-5">
+  <div class="container-xl">
+    <div class="dark-cta-card p-4 p-md-5 p-xl-5 text-white shadow-xl">
+      <div class="row">
+        <div class="col-lg-8 position-relative" style="z-index: 2;">
+          <span class="badge-caps d-block mb-3" style="color: #ffdeab;">Tu Noche Comienza Aquí</span>
+          <h2 class="display-6 fw-bold mb-3">
+            Asegura tu turno antes de que empiece el servicio.
+          </h2>
+          <p class="fs-6 mb-4 text-white-50" style="max-width: 560px; line-height: 1.6;">
+            Las pistas VIP y las salas privadas suelen completarse con días de anticipación. Haz tu reserva en menos de dos minutos sin cargos de gestión previa.
+          </p>
+          <div class="d-flex flex-column flex-sm-row gap-3">
+            <a href="{% url 'myapp:reserva' %}" class="btn btn-brand-coral px-4 py-3 d-inline-flex align-items-center justify-content-center gap-2">
+              <i class="bi bi-calendar3"></i>
+              <span>Reservar Pista Ahora</span>
+            </a>
+            <a class="btn btn-outline-light rounded-pill px-4 py-3 d-inline-flex align-items-center justify-content-center gap-2" href="tel:+34954021890">
+              <i class="bi bi-telephone"></i>
+              <span>Llamar al Concierge</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

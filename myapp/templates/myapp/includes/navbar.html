@@ -1,0 +1,35 @@
+<header class="fixed-top" style="background-color: rgba(251, 248, 255, 0.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 2px 14px rgba(43,45,66,0.04);">
+  <div class="container-xl">
+    <div class="d-flex align-items-center justify-content-between py-3">
+      <!-- Brand -->
+      <a class="d-flex align-items-center gap-3 text-decoration-none" href="{% url 'myapp:home' %}#inicio">
+        <img alt="Pins & Co." class="object-fit-contain"
+             src="https://lh3.googleusercontent.com/aida/AEtjO1VkRQj98zu-B04zPfFba1oaTs-SXwiR6RVs5IC0Szrh_a12aRH8wMwdBAyxSZdQUtabbNnOO-HsrE3j-pxIDOpGW3vNAQml4ynAOGJz5FAOrejfH4uB8LaGQfA2GHF75WZiRkn2aW1XauPgndz3xnVqBc6oIsHQkIyyvJhvbI36vUd055nagGJXK-gokVyD4RM8dTSBeRKi1aQ01Nl271n0ezsObobSSK69PtaPOxUZCEMHvJsTREFbFhKc"
+             style="height: 32px; width: auto;"/>
+        <div class="d-flex flex-column">
+          <span class="font-heading fw-bold fs-5 text-dark lh-1">Pins & Co.</span>
+          <span class="badge-caps" style="color: var(--brand-outline) !important;">Bowling & Social Club</span>
+        </div>
+      </a>
+
+      <!-- Center Nav -->
+      <nav class="d-none d-md-flex nav-pill-wrapper gap-1">
+        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'myapp:home' %}#inicio">Inicio</a>
+        <a class="nav-link" href="{% url 'myapp:home' %}#sobre-nosotros">Sobre Nosotros</a>
+        <a class="nav-link" href="{% url 'myapp:home' %}#pistas">Pistas</a>
+        <a class="nav-link" href="{% url 'myapp:home' %}#ubicacion">Ubicación</a>
+      </nav>
+
+            <!-- Right -->
+      <div class="d-flex align-items-center gap-3">
+        <a class="btn btn-brand-coral px-4 py-2 d-none d-sm-inline-flex align-items-center" href="{% url 'myapp:reserva' %}">
+          Reservar Pista
+        </a>
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white"
+             style="width: 36px; height: 36px; background-color: var(--brand-primary);">
+          <i class="bi bi-person-fill fs-6"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

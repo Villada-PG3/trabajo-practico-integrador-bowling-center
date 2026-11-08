@@ -1,0 +1,889 @@
+{% extends 'myapp/base.html' %}
+{% load static l10n %}
+
+{% block title %}Reservar Pista — Pins & Co.{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Cada paso es un panel: solo se ve el que esta activo. */
+  .step-pane { display: none; }
+  .step-pane.active { display: block; }
+
+  .lane-card {
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 1rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: #fff;
+  }
+  .lane-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+  .lane-card.active-lane {
+    background-color: var(--brand-surface-container-high) !important;
+    border-color: var(--brand-primary-container);
+    box-shadow: 0 8px 24px rgba(154,68,45,0.12);
+  }
+  /* El radio nativo queda oculto: se elige tocando la tarjeta. */
+  .lane-input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+  .progress-step {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .progress-step.active { background: var(--brand-primary); color: white; }
+  .progress-step.done { background: var(--brand-secondary); color: white; }
+  .progress-step.pending { background: var(--brand-surface-container); color: var(--brand-text-muted); }
+
+  /* ---------- Calendario (estilo mini picker) ---------- */
+  .mini-cal {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 14px 34px -18px rgba(18,24,40,.25);
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .mini-title { font-size: .95rem; }
+  .mini-nav {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #f1f3f7;
+    border: 0;
+    color: #4b5567;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .mini-nav:hover { background: #e4e8ef; color: #4b5567; }
+  .mini-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 3px;
+    table-layout: fixed;
+  }
+  .mini-grid th {
+    font-size: .64rem;
+    font-weight: 800;
+    color: var(--brand-outline);
+    padding: 6px 0;
+  }
+  .mini-d {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #2c3546;
+    line-height: 1;
+    padding: 0;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .mini-d:hover:not(:disabled):not(.fuera) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+  .mini-d.fuera { color: #cdcad8; font-weight: 500; }
+  .mini-d[aria-current="date"] { box-shadow: inset 0 0 0 2px var(--brand-primary); color: var(--brand-primary); }
+  .mini-d.elegido { background: var(--brand-primary) !important; color: #fff !important; box-shadow: 0 8px 18px rgba(154,68,45,0.28); }
+  .mini-d:disabled { cursor: not-allowed; }
+
+  .mini-d.dia-libre { background: #e6f7ec; color: #1c7a45; border-color: #c3ecd2; }
+  .mini-d.dia-parcial { background: #fff6dd; color: #8a6100; border-color: #ffe3a6; }
+  .mini-d.dia-completo { background: #fde7e7; color: #a32121; border-color: #f7c6c6; }
+  .mini-d.dia-cerrado, .mini-d.dia-pasado { background: #f7f6fb; color: #b9b6c8; border-color: transparent; }
+
+  .punto-leyenda { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- Panel del dia: horarios scrolleables ---------- */
+  .panel-dia {
+    background: #f8f7fc;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .slot-hora {
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 0.85rem;
+    background: #fff;
+    padding: 0.6rem 1rem;
+    text-align: left;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .slot-hora:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(0,0,0,0.07); transform: translateY(-1px); }
+  .slot-hora:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---------- Bloques de duracion ---------- */
+  .bloque-duracion {
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 0.75rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bloque-duracion:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+  .bloque-duracion.elegido {
+    background: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-primary);
+    box-shadow: 0 6px 16px rgba(154,68,45,0.25);
+  }
+
+  .ticket-card {
+    background: #191824;
+    border-radius: 1.5rem;
+    color: white;
+    position: sticky;
+    top: 100px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl py-4 py-lg-5">
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- STEPPER -->
+  <div class="bg-white card-rounded p-4 p-lg-5 shadow-sm mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+      <div>
+        <span class="badge-caps px-3 py-1 rounded-pill" style="background: #ffdbd2; color: var(--brand-primary);" id="wizardStepBadge">
+          Paso 1 de 4: Selección de pista
+        </span>
+        <h1 class="font-heading fw-bold fs-3 text-dark mt-2 mb-0">Reserva tu pista</h1>
+      </div>
+      <div class="d-flex align-items-center gap-2 small" style="color: var(--brand-text-muted);">
+        <i class="bi bi-shield-check text-success"></i>
+        <span>La reserva se guarda al confirmar</span>
+      </div>
+    </div>
+
+    <div class="progress mb-4" style="height: 8px; border-radius: 999px;">
+      <div class="progress-bar" id="stepProgressBar" role="progressbar" style="width: 25%; background-color: var(--brand-primary);"></div>
+    </div>
+
+    <div class="row g-2">
+      <div class="col-3">
+        <button class="btn w-100 text-start p-0 border-0 bg-transparent" onclick="irAlPaso(1)" type="button">
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress-step active" id="nodoPaso1">1</div>
+            <div class="d-none d-sm-block">
+              <div class="fw-semibold small">Pista</div>
+              <div class="text-muted" style="font-size: 12px;">Tipo y tarifa</div>
+            </div>
+          </div>
+        </button>
+      </div>
+      <div class="col-3">
+        <button class="btn w-100 text-start p-0 border-0 bg-transparent" onclick="irAlPaso(2)" type="button">
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress-step pending" id="nodoPaso2">2</div>
+            <div class="d-none d-sm-block">
+              <div class="fw-semibold small text-muted">Fecha</div>
+              <div class="text-muted" style="font-size: 12px;">Día y horario</div>
+            </div>
+          </div>
+        </button>
+      </div>
+      <div class="col-3">
+        <button class="btn w-100 text-start p-0 border-0 bg-transparent" onclick="irAlPaso(3)" type="button">
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress-step pending" id="nodoPaso3">3</div>
+            <div class="d-none d-sm-block">
+              <div class="fw-semibold small text-muted">Horario</div>
+              <div class="text-muted" style="font-size: 12px;">Duración</div>
+            </div>
+          </div>
+        </button>
+      </div>
+      <div class="col-3">
+        <button class="btn w-100 text-start p-0 border-0 bg-transparent" onclick="irAlPaso(4)" type="button">
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress-step pending" id="nodoPaso4">4</div>
+            <div class="d-none d-sm-block">
+              <div class="fw-semibold small text-muted">Confirmación</div>
+              <div class="text-muted" style="font-size: 12px;">Datos</div>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" id="reservaForm" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger border-0 rounded-4" role="alert">
+        {% for error in form.non_field_errors %}
+          <div>{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="row g-4">
+      <div class="col-lg-8">
+
+        <!-- ========== PASO 1: PISTA ========== -->
+        <div class="step-pane active bg-white card-rounded p-4 p-lg-5 shadow-sm" id="paso1">
+          <h2 class="font-heading fw-bold fs-4 mb-1">Elegí tu pista</h2>
+          <p class="small text-muted mb-4">La tarifa y la capacidad dependen del tipo de pista.</p>
+
+          <div class="d-flex flex-column gap-3">
+            {% for pista in pistas %}
+              <input class="lane-input" type="radio" name="{{ form.pista.html_name }}" id="pista-{{ pista.numero_pista }}"
+                     value="{{ pista.numero_pista }}"
+                     data-numero="{{ pista.numero_pista }}"
+                     data-tipo="{{ pista.tipo_pista.nombre }}"
+                     data-precio="{{ pista.obtenerPrecioHora|unlocalize }}"
+                     data-capacidad="{{ pista.obtenerCapacidadMaxima }}"
+                     data-duracion="{{ pista.obtenerDuracionMinima|unlocalize }}"
+                     {% if form.pista.value|stringformat:"s" == pista.numero_pista|stringformat:"s" %}checked{% endif %}>
+              <label class="lane-card p-3 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-0" for="pista-{{ pista.numero_pista }}">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="rounded-3 d-flex align-items-center justify-content-center fw-bold"
+                       style="width:48px;height:48px;background:var(--brand-surface-container-high);">
+                    {{ pista.numero_pista }}
+                  </div>
+                  <div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="fw-semibold">Pista {{ pista.numero_pista }}: {{ pista.tipo_pista.nombre }}</span>
+                      <span class="badge rounded-pill" style="background:var(--brand-secondary-bg);color:var(--brand-secondary);font-size:11px;">Libre</span>
+                    </div>
+                    <div class="small text-muted">
+                      Hasta {{ pista.obtenerCapacidadMaxima }} jugadores · duración mínima {{ pista.obtenerDuracionMinima }} h
+                    </div>
+                  </div>
+                </div>
+                <span class="fw-bold">$ {{ pista.obtenerPrecioHora }}<small class="text-muted fw-normal">/h</small></span>
+              </label>
+            {% empty %}
+              <div class="text-center py-5">
+                <p class="text-muted mb-1">No hay pistas disponibles en este momento.</p>
+                <p class="small text-muted">El staff todavía no cargó ninguna pista.</p>
+              </div>
+            {% endfor %}
+          </div>
+
+          {% for error in form.pista.errors %}
+            <div class="text-danger small mt-3">{{ error }}</div>
+          {% endfor %}
+
+          <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+            <button class="btn btn-brand-primary px-4 py-2" onclick="irAlPaso(2)" type="button">
+              Continuar a fecha <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ========== PASO 2: FECHA Y HORARIO ========== -->
+        <div class="step-pane bg-white card-rounded p-4 p-lg-5 shadow-sm" id="paso2">
+          <h2 class="font-heading fw-bold fs-4 mb-1">Elegí el día y el horario</h2>
+          <p class="small text-muted mb-4" id="textoFechaElegida">Todavía no elegiste ningún día.</p>
+
+          <div class="row g-4">
+            <div class="col-lg-5">
+              <div class="mini-cal p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2 pb-1">
+                  <button type="button" class="btn mini-nav" onclick="moverMes(-1)" aria-label="Mes anterior">&lsaquo;</button>
+                  <span class="mini-title fw-bold text-capitalize" id="etiquetaMes" aria-live="polite">&mdash;</span>
+                  <button type="button" class="btn mini-nav" onclick="moverMes(1)" aria-label="Mes siguiente">&rsaquo;</button>
+                </div>
+
+                <table class="mini-grid text-center mb-0" role="grid">
+                  <thead>
+                    <tr>
+                      <th scope="col">L<span class="visually-hidden">unes</span></th>
+                      <th scope="col">M<span class="visually-hidden">artes</span></th>
+                      <th scope="col">M<span class="visually-hidden">iercoles</span></th>
+                      <th scope="col">J<span class="visually-hidden">ueves</span></th>
+                      <th scope="col">V<span class="visually-hidden">iernes</span></th>
+                      <th scope="col">S<span class="visually-hidden">abado</span></th>
+                      <th scope="col">D<span class="visually-hidden">omingo</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="cuerpoCalendario"></tbody>
+                </table>
+              </div>
+
+              <div class="d-flex flex-wrap align-items-center gap-3 small mt-3" style="color: var(--brand-text-muted);">
+                <span class="d-flex align-items-center gap-2"><span class="punto-leyenda" style="background:#e6f7ec;border:1px solid #c3ecd2;"></span> Todo libre</span>
+                <span class="d-flex align-items-center gap-2"><span class="punto-leyenda" style="background:#fff6dd;border:1px solid #ffe3a6;"></span> Parcial</span>
+                <span class="d-flex align-items-center gap-2"><span class="punto-leyenda" style="background:#fde7e7;border:1px solid #f7c6c6;"></span> Sin horarios</span>
+                <span class="d-flex align-items-center gap-2"><span class="punto-leyenda" style="background:#f7f6fb;border:1px solid #e6e3ef;"></span> Cerrado</span>
+              </div>
+            </div>
+
+            <div class="col-lg-7">
+              <div class="panel-dia p-3 h-100">
+                <div id="vistaVacia" class="d-flex flex-column align-items-center justify-content-center text-center text-muted" style="min-height: 260px;">
+                  <i class="bi bi-calendar3 fs-3 mb-2"></i>
+                  <p class="small mb-0">Elegí un día del calendario para ver los horarios libres.</p>
+                </div>
+
+                <div id="vistaDia" class="d-none">
+                  <div class="d-flex justify-content-between align-items-baseline mb-2 gap-2">
+                    <div class="fw-bold text-capitalize" id="tituloDia"></div>
+                    <div class="small text-muted" id="subtituloDia"></div>
+                  </div>
+                  <div class="d-flex flex-column gap-2" id="listaHorarios" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {{ form.fecha }}
+          {% for error in form.fecha.errors %}
+            <div class="text-danger small mt-3">{{ error }}</div>
+          {% endfor %}
+
+          <div class="d-flex justify-content-between pt-3 mt-4 border-top">
+            <button class="btn btn-light px-4" onclick="irAlPaso(1)" type="button">
+              <i class="bi bi-arrow-left me-1"></i> Volver
+            </button>
+            <button class="btn btn-brand-primary px-4" onclick="irAlPaso(3)" type="button">
+              Continuar a duración <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ========== PASO 3: HORARIO ========== -->
+        <div class="step-pane bg-white card-rounded p-4 p-lg-5 shadow-sm" id="paso3">
+          <h2 class="font-heading fw-bold fs-4 mb-1">Horario y duración</h2>
+          <p class="small text-muted mb-4">Elegí a qué hora empezás y cuánto tiempo querés la pista.</p>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-5">
+              <label class="form-label small fw-semibold" for="{{ form.hora_inicio.id_for_label }}">{{ form.hora_inicio.label }}</label>
+              {{ form.hora_inicio }}
+              {% for error in form.hora_inicio.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold" for="{{ form.cantidad_jugadores.id_for_label }}">{{ form.cantidad_jugadores.label }}</label>
+              {{ form.cantidad_jugadores }}
+              {% for error in form.cantidad_jugadores.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <label class="badge-caps text-muted d-block mb-2">Duración de la reserva</label>
+          <div class="row g-2 mb-2" id="bloquesDuracion"></div>
+          <p class="small text-muted mb-4" id="textoDuracion">La duración mínima depende del tipo de pista.</p>
+
+          {{ form.hora_fin }}
+          {% for error in form.hora_fin.errors %}
+            <div class="text-danger small mb-2">{{ error }}</div>
+          {% endfor %}
+
+          <div class="alert d-flex align-items-center gap-2 mb-4" style="background:var(--brand-secondary-bg);color:var(--brand-secondary);border:none;">
+            <i class="bi bi-info-circle"></i>
+            <span class="small" id="textoFin">Elegí la hora de inicio para calcular el horario de fin.</span>
+          </div>
+
+          <div class="d-flex justify-content-between pt-3 border-top">
+            <button class="btn btn-light px-4" onclick="irAlPaso(2)" type="button">
+              <i class="bi bi-arrow-left me-1"></i> Volver
+            </button>
+            <button class="btn btn-brand-primary px-4" onclick="irAlPaso(4)" type="button">
+              Continuar a confirmación <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ========== PASO 4: DATOS ========== -->
+        <div class="step-pane bg-white card-rounded p-4 p-lg-5 shadow-sm" id="paso4">
+          <h2 class="font-heading fw-bold fs-4 mb-1">Tus datos</h2>
+          <p class="small text-muted mb-4">Con esto te identificamos cuando llegues al club.</p>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+              {{ form.nombre }}
+              {% for error in form.nombre.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+              {{ form.email }}
+              {% for error in form.email.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }}</label>
+              {{ form.telefono }}
+              {% for error in form.telefono.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="{{ form.direccion.id_for_label }}">{{ form.direccion.label }}</label>
+              {{ form.direccion }}
+              {% for error in form.direccion.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between pt-3 border-top">
+            <button class="btn btn-light px-4" onclick="irAlPaso(3)" type="button">
+              <i class="bi bi-arrow-left me-1"></i> Volver
+            </button>
+            <button class="btn btn-brand-primary px-5 py-2" id="botonConfirmar" type="submit">
+              <i class="bi bi-calendar-check me-1"></i>
+              Confirmar reserva
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TICKET LATERAL -->
+      <div class="col-lg-4">
+        <div class="ticket-card p-4 shadow-lg">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="badge rounded-pill" style="background:var(--brand-primary);">Tu reserva</span>
+            <span class="small opacity-50">Pins &amp; Co.</span>
+          </div>
+          <h3 class="font-heading fw-bold fs-5 mb-1">Pins &amp; Co. Social Club</h3>
+          <p class="small opacity-60 mb-4">Sala principal de pistas</p>
+
+          <div class="d-flex justify-content-between mb-3">
+            <div>
+              <div class="small opacity-50 text-uppercase" style="font-size:10px;">Pista</div>
+              <div class="fw-semibold" id="ticketPista">Sin elegir</div>
+            </div>
+            <div class="text-end">
+              <div class="small opacity-50 text-uppercase" style="font-size:10px;">Tarifa</div>
+              <div class="fw-bold" style="color:var(--brand-primary-container);" id="ticketTarifa">—</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="small opacity-50 text-uppercase" style="font-size:10px;">Fecha y horario</div>
+            <div class="fw-semibold" id="ticketFecha">Sin fecha • Sin hora</div>
+            <div class="small opacity-60" id="ticketDuracion"></div>
+          </div>
+
+          <div class="mb-4">
+            <div class="small opacity-50 text-uppercase" style="font-size:10px;">Jugadores</div>
+            <div class="fw-semibold" id="ticketJugadores">4</div>
+          </div>
+
+          <hr style="border-color:rgba(255,255,255,0.15);">
+
+          <div class="d-flex justify-content-between align-items-end">
+            <div>
+              <div class="small opacity-50 text-uppercase" style="font-size:10px;">Total estimado</div>
+              <div class="small opacity-50">se cobra en el club</div>
+            </div>
+            <div class="fs-4 fw-bold" style="color:var(--brand-primary-container);" id="ticketTotal">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const URL_DISPONIBILIDAD = "{% url 'myapp:disponibilidad' %}";
+  const NOMBRES_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const NOMBRES_DIA = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+  const titulos = {
+    1: 'Paso 1 de 4: Selección de pista',
+    2: 'Paso 2 de 4: Día y horario',
+    3: 'Paso 3 de 4: Horario y duración',
+    4: 'Paso 4 de 4: Tus datos'
+  };
+
+  const campoFecha = document.getElementById('id_fecha');
+  const campoInicio = document.getElementById('id_hora_inicio');
+  const campoFin = document.getElementById('id_hora_fin');
+  const campoJugadores = document.getElementById('id_cantidad_jugadores');
+
+  let mesMostrado = new Date();
+  mesMostrado.setDate(1);
+  let duracionElegida = null;
+  let disponibilidad = {};   // { "2026-11-16": {estado, slots} }
+
+  // ---------- STEPPER ----------
+  function irAlPaso(numero) {
+    if (numero < 1 || numero > 4) return;
+
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('paso' + i).classList.toggle('active', i === numero);
+
+      const nodo = document.getElementById('nodoPaso' + i);
+      nodo.classList.remove('active', 'done', 'pending');
+      if (i < numero) {
+        nodo.classList.add('done');
+        nodo.innerHTML = '<i class="bi bi-check"></i>';
+      } else if (i === numero) {
+        nodo.classList.add('active');
+        nodo.innerHTML = i;
+      } else {
+        nodo.classList.add('pending');
+        nodo.innerHTML = i;
+      }
+    }
+
+    document.getElementById('stepProgressBar').style.width = (numero * 25) + '%';
+    document.getElementById('wizardStepBadge').innerText = titulos[numero];
+    window.scrollTo({ top: 80, behavior: 'smooth' });
+  }
+
+  function textoDuracion(minutos) {
+    const horas = Math.floor(minutos / 60);
+    const resto = minutos % 60;
+    if (horas === 0) return resto + ' min';
+    if (resto === 0) return horas + ' h';
+    return horas + ' h ' + resto + ' min';
+  }
+
+  function plata(numero) {
+    return '$ ' + numero.toFixed(2).replace('.', ',');
+  }
+
+  // ---------- CALENDARIO ----------
+  function fechaISO(anio, mes, dia) {
+    return anio + '-' + String(mes + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+  }
+
+  // Pide al servidor que pistas quedan libres cada dia del mes.
+  function cargarMes(anio, mes) {
+    const etiqueta = document.getElementById('etiquetaMes');
+    etiqueta.innerText = 'cargando...';
+    document.getElementById('cuerpoCalendario').innerHTML = '';
+
+    fetch(URL_DISPONIBILIDAD + '?anio=' + anio + '&mes=' + (mes + 1))
+      .then(function (respuesta) { return respuesta.json(); })
+      .then(function (datos) {
+        disponibilidad = datos.dias;
+        dibujarCalendario();
+      })
+      .catch(function () {
+        etiqueta.innerText = 'no se pudo cargar';
+      });
+  }
+
+  function claseDelDia(estado) {
+    if (estado === 'libre') return 'dia-libre';
+    if (estado === 'parcial') return 'dia-parcial';
+    if (estado === 'completo') return 'dia-completo';
+    return 'dia-cerrado';
+  }
+
+  // Dibuja el mes como grilla de celdas cuadradas (estilo mini picker).
+  function dibujarCalendario() {
+    const anio = mesMostrado.getFullYear();
+    const mes = mesMostrado.getMonth();
+    document.getElementById('etiquetaMes').innerText = NOMBRES_MES[mes] + ' ' + anio;
+
+    const diasDelMes = new Date(anio, mes + 1, 0).getDate();
+    const primerDia = (new Date(anio, mes, 1).getDay() + 6) % 7;
+    const diasMesAnterior = new Date(anio, mes, 0).getDate();
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Arma la lista de celdas: dias del mes anterior, del mes y del siguiente.
+    const celdas = [];
+    for (let i = primerDia; i > 0; i--) {
+      celdas.push({ fuera: true, numero: diasMesAnterior - i + 1 });
+    }
+    for (let dia = 1; dia <= diasDelMes; dia++) {
+      celdas.push({ fuera: false, numero: dia });
+    }
+    const sobrantes = (7 - (celdas.length % 7)) % 7;
+    for (let dia = 1; dia <= sobrantes; dia++) {
+      celdas.push({ fuera: true, numero: dia });
+    }
+
+    const cuerpo = document.getElementById('cuerpoCalendario');
+    cuerpo.innerHTML = '';
+    let fila = null;
+
+    celdas.forEach(function (celda, indice) {
+      if (indice % 7 === 0) {
+        fila = document.createElement('tr');
+        cuerpo.appendChild(fila);
+      }
+
+      const celdaTabla = document.createElement('td');
+
+      if (celda.fuera) {
+        celdaTabla.innerHTML = '<span class="mini-d fuera" aria-hidden="true">' + celda.numero + '</span>';
+      } else {
+        const iso = fechaISO(anio, mes, celda.numero);
+        const info = disponibilidad[iso] || { estado: 'cerrado', slots: [] };
+        const habilitado = info.estado === 'libre' || info.estado === 'parcial';
+
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'mini-d ' + claseDelDia(info.estado);
+        boton.innerText = celda.numero;
+        boton.dataset.iso = iso;
+        boton.disabled = !habilitado;
+
+        if (iso === campoFecha.value) {
+          boton.classList.add('elegido');
+        }
+        if (new Date(anio, mes, celda.numero).getTime() === hoy.getTime()) {
+          boton.setAttribute('aria-current', 'date');
+        }
+        if (habilitado) {
+          boton.addEventListener('click', function () { abrirDia(iso); });
+        }
+
+        celdaTabla.appendChild(boton);
+      }
+
+      fila.appendChild(celdaTabla);
+    });
+  }
+
+  function moverMes(salto) {
+    mesMostrado.setMonth(mesMostrado.getMonth() + salto);
+    cargarMes(mesMostrado.getFullYear(), mesMostrado.getMonth());
+  }
+
+  // Muestra los horarios del dia elegido en el panel de la derecha.
+  function abrirDia(iso) {
+    const info = disponibilidad[iso];
+    if (!info) return;
+
+    const partes = iso.split('-');
+    const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    const diaSemana = (fecha.getDay() + 6) % 7;
+
+    document.getElementById('vistaVacia').classList.add('d-none');
+    document.getElementById('vistaDia').classList.remove('d-none');
+    document.getElementById('tituloDia').innerText =
+      NOMBRES_DIA[diaSemana] + ' ' + Number(partes[2]) + ' de ' + NOMBRES_MES[Number(partes[1]) - 1];
+    document.getElementById('subtituloDia').innerText =
+      info.slots.filter(function (s) { return s.libres > 0; }).length + ' horarios libres';
+
+    const lista = document.getElementById('listaHorarios');
+    lista.innerHTML = '';
+
+    info.slots.forEach(function (slot) {
+      let color = '#fde7e7';
+      let texto = 'Sin pistas libres';
+      if (slot.libres === slot.total) { color = '#e6f7ec'; texto = 'Todas libres'; }
+      else if (slot.libres > 0) { color = '#fff6dd'; texto = slot.libres + ' de ' + slot.total + ' libres'; }
+
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'slot-hora d-flex justify-content-between align-items-center';
+      boton.disabled = slot.libres === 0;
+      boton.innerHTML =
+        '<span class="fw-bold">' + slot.hora + ' hs</span>' +
+        '<span class="badge rounded-pill" style="background:' + color + ';color:#3b3a45;">' + texto + '</span>';
+      boton.addEventListener('click', function () {
+        elegirFecha(iso);
+        campoInicio.value = slot.hora;
+        calcularHoraFin();
+        irAlPaso(3);
+      });
+      lista.appendChild(boton);
+    });
+
+    // Marca el dia como elegido en la grilla.
+    document.querySelectorAll('.mini-d').forEach(function (b) { b.classList.remove('elegido'); });
+    const botonDia = document.querySelector('.mini-d[data-iso="' + iso + '"]');
+    if (botonDia) botonDia.classList.add('elegido');
+  }
+
+  function elegirFecha(iso) {
+    campoFecha.value = iso;
+
+    const partes = iso.split('-');
+    const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    const diaSemana = (fecha.getDay() + 6) % 7;
+
+    document.getElementById('textoFechaElegida').innerText =
+      'Elegiste ' + NOMBRES_DIA[diaSemana] + ' ' + Number(partes[2]) + ' de ' +
+      NOMBRES_MES[Number(partes[1]) - 1] + '.';
+    pintarTicket();
+  }
+
+  // ---------- DURACION y HORA DE FIN ----------
+  function dibujarBloques() {
+    const pista = document.querySelector('input[name="pista"]:checked');
+    const contenedor = document.getElementById('bloquesDuracion');
+    contenedor.innerHTML = '';
+
+    if (!pista) {
+      document.getElementById('textoDuracion').innerText = 'Primero elegí una pista en el paso 1.';
+      return;
+    }
+
+    const minimaHoras = Number(pista.dataset.duracion);
+    const minimo = Math.round(minimaHoras * 60);
+    duracionElegida = duracionElegida || minimo;
+
+    document.getElementById('textoDuracion').innerText =
+      'Esta pista se reserva como mínimo ' + minimaHoras + ' h; después, de a 30 minutos.';
+
+    for (let minutos = minimo; minutos <= minimo + 180; minutos += 30) {
+      const clases = minutos === duracionElegida ? 'bloque-duracion elegido' : 'bloque-duracion';
+      contenedor.insertAdjacentHTML('beforeend',
+        '<div class="col-6 col-md-3">' +
+          '<div class="' + clases + '" data-minutos="' + minutos + '">' +
+            '<div class="fw-bold">' + textoDuracion(minutos) + '</div>' +
+            '<div class="small opacity-75">' + minutos + ' min</div>' +
+          '</div>' +
+        '</div>');
+    }
+
+    contenedor.querySelectorAll('.bloque-duracion').forEach(function (bloque) {
+      bloque.addEventListener('click', function () {
+        duracionElegida = Number(bloque.dataset.minutos);
+        contenedor.querySelectorAll('.bloque-duracion').forEach(function (b) {
+          b.classList.remove('elegido');
+        });
+        bloque.classList.add('elegido');
+        calcularHoraFin();
+      });
+    });
+
+    calcularHoraFin();
+  }
+
+  function calcularHoraFin() {
+    const inicio = campoInicio.value;
+
+    if (!inicio || !duracionElegida) {
+      campoFin.value = '';
+      document.getElementById('textoFin').innerText =
+        'Elegí la hora de inicio para calcular el horario de fin.';
+      pintarTicket();
+      return;
+    }
+
+    const partes = inicio.split(':');
+    const minutosInicio = Number(partes[0]) * 60 + Number(partes[1]);
+    const minutosFin = minutosInicio + duracionElegida;
+
+    if (minutosFin >= 24 * 60) {
+      campoFin.value = '';
+      document.getElementById('textoFin').innerText =
+        'La reserva no puede terminar después de la medianoche. Elegí una hora más temprana.';
+      pintarTicket();
+      return;
+    }
+
+    campoFin.value = String(Math.floor(minutosFin / 60)).padStart(2, '0') + ':' +
+                     String(minutosFin % 60).padStart(2, '0');
+    document.getElementById('textoFin').innerText =
+      'De ' + inicio + ' a ' + campoFin.value + ' (' + textoDuracion(duracionElegida) + ').';
+    pintarTicket();
+  }
+
+  // ---------- TICKET ----------
+  function pintarTicket() {
+    const pista = document.querySelector('input[name="pista"]:checked');
+    const inicio = campoInicio.value;
+    const fin = campoFin.value;
+
+    document.querySelectorAll('.lane-card').forEach(function (tarjeta) {
+      tarjeta.classList.remove('active-lane');
+    });
+    if (pista) {
+      pista.nextElementSibling.classList.add('active-lane');
+      document.getElementById('ticketPista').innerText = 'Pista ' + pista.dataset.numero + ' (' + pista.dataset.tipo + ')';
+      document.getElementById('ticketTarifa').innerText = plata(Number(pista.dataset.precio)) + '/h';
+    }
+
+    document.getElementById('ticketFecha').innerText =
+      (campoFecha.value ? campoFecha.value : 'Sin fecha') +
+      ' • ' + (inicio ? inicio : 'Sin hora') + (fin ? ' a ' + fin : '');
+    document.getElementById('ticketJugadores').innerText = campoJugadores.value || '—';
+
+    if (pista && inicio && fin) {
+      document.getElementById('ticketDuracion').innerText = '(' + textoDuracion(duracionElegida) + ')';
+      document.getElementById('ticketTotal').innerText =
+        plata(Number(pista.dataset.precio) * (duracionElegida / 60));
+      return;
+    }
+    document.getElementById('ticketDuracion').innerText = '';
+    document.getElementById('ticketTotal').innerText = '—';
+  }
+
+  document.querySelectorAll('input[name="pista"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      duracionElegida = null;
+      dibujarBloques();
+      pintarTicket();
+    });
+  });
+
+  campoInicio.addEventListener('change', calcularHoraFin);
+  campoInicio.addEventListener('input', calcularHoraFin);
+
+  document.getElementById('reservaForm').addEventListener('submit', function (evento) {
+    if (!document.querySelector('input[name="pista"]:checked')) {
+      evento.preventDefault();
+      irAlPaso(1);
+      return;
+    }
+    if (!campoFecha.value) {
+      evento.preventDefault();
+      irAlPaso(2);
+      return;
+    }
+    if (!campoInicio.value || !campoFin.value) {
+      evento.preventDefault();
+      irAlPaso(3);
+      return;
+    }
+    const boton = document.getElementById('botonConfirmar');
+    boton.disabled = true;
+    boton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Guardando...';
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (campoFecha.value) {
+      const partes = campoFecha.value.split('-');
+      mesMostrado = new Date(Number(partes[0]), Number(partes[1]) - 1, 1);
+      elegirFecha(campoFecha.value);
+    }
+    cargarMes(mesMostrado.getFullYear(), mesMostrado.getMonth());
+
+    dibujarBloques();
+    pintarTicket();
+
+    const conError = document.querySelector('.text-danger');
+    if (conError) {
+      const panel = conError.closest('.step-pane');
+      if (panel) {
+        irAlPaso(Number(panel.id.replace('paso', '')));
+      }
+    }
+  });
+</script>
+{% endblock %}
