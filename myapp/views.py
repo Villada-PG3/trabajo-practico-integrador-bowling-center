@@ -14,6 +14,9 @@ from django.views.generic import CreateView, DetailView, FormView, TemplateView
 from .forms import AgregarProductoForm, BuscarReservaForm, ReservaForm
 from .models import (
     Cliente,
+    Jugador,
+    Lanzamiento,
+    Participacion,
     EstadoPartida,
     EstadoPedido,
     EstadoReserva,
@@ -349,3 +352,155 @@ class AgregarPedidoView(View):
             )
 
         return redirect("myapp:detalle_reserva", codigo=reserva.codigo)
+
+
+def obtener_partida(reserva):
+    """Devuelve la partida de la reserva; si no tiene, crea la primera."""
+    partida = reserva.partidas.first()
+
+    if partida is None:
+        partida = Partida.objects.create(
+            reserva=reserva,
+            numero=1,
+            fecha_hora_inicio=timezone.make_aware(
+                datetime.combine(reserva.fecha, reserva.hora_inicio)
+            ),
+            estado=EstadoPartida.objects.get(nombre="pendiente"),
+        )
+
+    return partida
+
+
+class PartidaView(DetailView):
+    """Pantalla para cargar los tiros de la partida."""
+
+    model = Reserva
+    template_name = "myapp/partida.html"
+    context_object_name = "reserva"
+    slug_field = "codigo"
+    slug_url_kwarg = "codigo"
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        partida = obtener_partida(self.object)
+
+        jugadores = []
+        for participacion in partida.participaciones.select_related("jugador"):
+            jugadores.append(
+                {
+                    "participacion": participacion,
+                    "nombre": participacion.jugador.nombre,
+                    "total": participacion.calcularPuntajeTotal(),
+                    "marcas": participacion.marcasPorFrame(),
+                    "siguiente": participacion.siguienteTiro(),
+                }
+            )
+
+        terminada = bool(jugadores) and all(
+            jugador["siguiente"] is None for jugador in jugadores
+        )
+
+        contexto["partida"] = partida
+        contexto["jugadores"] = jugadores
+        contexto["terminada"] = terminada
+        contexto["ganador"] = partida.obtenerGanador() if terminada else None
+        return contexto
+
+
+class TirarView(View):
+    """Carga un lanzamiento del jugador en el proximo turno que le toca."""
+
+    def post(self, request, codigo):
+        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        partida = obtener_partida(reserva)
+
+        participacion = Participacion.objects.filter(
+            pk=request.POST.get("participacion"), partida=partida
+        ).select_related("jugador").first()
+
+        if participacion is None:
+            messages.error(request, "No encontramos ese jugador en la partida.")
+            return redirect("myapp:partida", codigo=reserva.codigo)
+
+        try:
+            pinos = int(request.POST.get("pinos", ""))
+        except ValueError:
+            messages.error(request, "Pone cuantos pinos derribo (0 a 10).")
+            return redirect("myapp:partida", codigo=reserva.codigo)
+
+        if pinos < 0 or pinos > 10:
+            messages.error(request, "Los pinos van de 0 a 10.")
+            return redirect("myapp:partida", codigo=reserva.codigo)
+
+        turno = participacion.siguienteTiro()
+
+        if turno is None:
+            messages.info(
+                request, f"{participacion.jugador.nombre} ya termino la partida."
+            )
+            return redirect("myapp:partida", codigo=reserva.codigo)
+
+        try:
+            Lanzamiento.objects.create(
+                participacion=participacion,
+                numero_frame=turno[0],
+                numero_lanzamiento=turno[1],
+                pinos_derribados=pinos,
+            )
+        except ValidationError as error:
+            mensajes = " ".join(
+                texto for lista in error.message_dict.values() for texto in lista
+            )
+            messages.error(request, f"No se pudo cargar el tiro: {mensajes}")
+            return redirect("myapp:partida", codigo=reserva.codigo)
+
+        messages.success(
+            request,
+            f"{participacion.jugador.nombre}: tirado {pinos} en el frame "
+            f"{turno[0]}.",
+        )
+        self.actualizar_estado(partida)
+
+        return redirect("myapp:partida", codigo=reserva.codigo)
+
+    def actualizar_estado(self, partida):
+        """Pasa la partida a en_curso y a finalizada cuando todos terminaron."""
+        participaciones = list(partida.participaciones.all())
+
+        if not participaciones:
+            return
+
+        if all(p.siguienteTiro() is None for p in participaciones):
+            nombre = "finalizada"
+        else:
+            nombre = "en_curso"
+
+        if partida.estado.nombre != nombre:
+            partida.estado = EstadoPartida.objects.get(nombre=nombre)
+            partida.save()
+
+
+class AgregarJugadorJuegoView(View):
+    """Suma un jugador a la partida de la reserva."""
+
+    def post(self, request, codigo):
+        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        partida = obtener_partida(reserva)
+
+        nombre = (request.POST.get("nombre") or "").strip()
+
+        if not nombre:
+            messages.error(request, "Escribi el nombre del jugador.")
+            return redirect("myapp:partida", codigo=reserva.codigo)
+
+        jugador = Jugador.objects.create(nombre=nombre)
+
+        try:
+            partida.agregarJugador(jugador)
+        except ValidationError as error:
+            jugador.delete()
+            messages.error(request, error.message)
+        else:
+            messages.success(request, f"Se sumo {nombre} a la partida.")
+
+        return redirect("myapp:partida", codigo=reserva.codigo)
