@@ -7,11 +7,6 @@ urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
     path("reserva/", views.ReservaView.as_view(), name="reserva"),
     path(
-        "reserva/disponibilidad/",
-        views.DisponibilidadView.as_view(),
-        name="disponibilidad",
-    ),
-    path(
         "mi-reserva/",
         views.ConsultaReservaView.as_view(),
         name="consulta_reserva",

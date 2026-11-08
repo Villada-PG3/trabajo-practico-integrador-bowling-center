@@ -125,7 +125,7 @@ CODIGO_ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def generar_codigo_reserva(largo=8):
-    """Devuelve un codigo publico que todavia no use ninguna reserva."""
+    # Devuelve un codigo publico que todavia no use ninguna reserva.
     while True:
         codigo = "".join(secrets.choice(CODIGO_ALFABETO) for _ in range(largo))
 
@@ -397,10 +397,8 @@ class Participacion(models.Model):
         ]
 
     def siguienteTiro(self):
-        """
-        Devuelve (numero_frame, numero_lanzamiento) del proximo tiro del
-        jugador, o None si ya termino sus 10 frames.
-        """
+        # Devuelve (numero_frame, numero_lanzamiento) del proximo tiro del
+        # jugador, o None si ya termino sus 10 frames.
         tiros = {}
 
         for lanz in self.lanzamientos.all():
@@ -438,7 +436,7 @@ class Participacion(models.Model):
         return None
 
     def marcasPorFrame(self):
-        """Devuelve 10 textos para mostrar: 'X', '9 /', '8 1', etc."""
+        # Devuelve 10 textos para mostrar: 'X', '9 /', '8 1', etc.
         tiros = {}
 
         for lanz in self.lanzamientos.order_by(
