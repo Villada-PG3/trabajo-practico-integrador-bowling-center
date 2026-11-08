@@ -1,13 +1,14 @@
 import calendar
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.http import urlencode
 from django.views import View
 from django.views.generic import CreateView, DetailView, FormView, TemplateView
 
@@ -60,17 +61,197 @@ class ReservaView(CreateView):
     template_name = "myapp/reserva.html"
     success_url = reverse_lazy("myapp:reserva")
 
+    def valor(self, nombre):
+        # Los datos elegidos viajan en la URL mientras el cliente navega y en
+        # el POST cuando confirma la reserva.
+        if self.request.method == "POST":
+            return self.request.POST.get(nombre, "")
+        return self.request.GET.get(nombre, "")
+
+    def url_paso(self, paso, pista, anio, mes, dia=None, hora="", duracion=None):
+        # Arma el enlace de un paso llevando lo que ya se eligio.
+        datos = {"paso": paso}
+
+        if pista is not None:
+            datos["pista"] = pista.numero_pista
+        if dia is not None:
+            datos["dia"] = dia.isoformat()
+        if hora:
+            datos["hora"] = hora
+        if duracion:
+            datos["duracion"] = duracion
+
+        datos["anio"] = anio
+        datos["mes"] = mes
+
+        return reverse("myapp:reserva") + "?" + urlencode(datos)
+
+    def calcular_duracion(self, pista, hora):
+        # Si el cliente no eligio duracion se ofrece la minima de la pista.
+        if pista is None or not hora:
+            return None
+
+        minima = int(pista.obtenerDuracionMinima() * 60)
+        pedida = self.valor("duracion")
+
+        if pedida.isdigit() and minima <= int(pedida) <= 240:
+            return int(pedida)
+
+        return minima
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        # Las pistas se muestran como tarjetas en el paso 1 del formulario.
-        contexto["pistas"] = Pista.objects.filter(
-            disponible=True
+
+        pistas = Pista.objects.filter(disponible=True)
+        pista = pistas.filter(numero_pista=self.valor("pista") or 0).first()
+
+        dia = None
+        if self.valor("dia"):
+            try:
+                dia = date.fromisoformat(self.valor("dia"))
+            except ValueError:
+                dia = None
+
+        hoy = date.today()
+        anio = int(self.valor("anio") or (dia.year if dia else hoy.year))
+        mes = int(self.valor("mes") or (dia.month if dia else hoy.month))
+
+        if mes < 1 or mes > 12:
+            anio, mes = hoy.year, hoy.month
+
+        disponibilidad = calcular_disponibilidad(anio, mes)
+
+        hora = self.valor("hora")[:5]
+        duracion = self.calcular_duracion(pista, hora)
+        hora_fin = ""
+
+        if duracion:
+            hora_fin = sumar_minutos(hora, duracion)
+
+        slots = []
+        horarios_libres = 0
+
+        if dia is not None:
+            info = disponibilidad["dias"].get(dia.isoformat())
+
+            if info:
+                for slot in info["slots"]:
+                    if slot["libres"] > 0:
+                        horarios_libres += 1
+                    slot["url"] = self.url_paso(3, pista, anio, mes, dia, slot["hora"])
+                    slots.append(slot)
+
+        # El paso lo decide la URL; si el formulario volvio con errores se
+        # muestra el paso 4, que es donde se confirma la reserva.
+        paso = 4 if self.request.method == "POST" else int(self.valor("paso") or 1)
+
+        if paso < 1 or paso > 4:
+            paso = 1
+        if pista is None:
+            paso = 1
+        elif paso > 2 and (dia is None or not hora):
+            paso = 2
+
+        opciones = []
+
+        if pista is not None and hora:
+            minima = int(pista.obtenerDuracionMinima() * 60)
+
+            for minutos in range(minima, minima + 181, 30):
+                fin = sumar_minutos(hora, minutos)
+
+                if not fin:
+                    break
+
+                opciones.append(
+                    {
+                        "minutos": minutos,
+                        "fin": fin,
+                        "texto": texto_duracion(minutos),
+                        "elegido": minutos == duracion,
+                        "url": self.url_paso(3, pista, anio, mes, dia, hora, minutos),
+                    }
+                )
+
+        total = None
+
+        if pista is not None and duracion:
+            total = pista.obtenerPrecioHora() * Decimal(duracion) / Decimal("60")
+
+        nombre_dia = ""
+        if dia is not None:
+            nombre_dia = (
+                f"{NOMBRES_DIA[dia.weekday()]} {dia.day} "
+                f"de {NOMBRES_MES[dia.month - 1]}"
+            )
+
+        anio_anterior, mes_anterior = anio, mes - 1
+        if mes == 1:
+            anio_anterior, mes_anterior = anio - 1, 12
+
+        anio_siguiente, mes_siguiente = anio, mes + 1
+        if mes == 12:
+            anio_siguiente, mes_siguiente = anio + 1, 1
+
+        semanas = armar_semanas(
+            anio,
+            mes,
+            disponibilidad["dias"],
+            dia,
+            pista.numero_pista if pista else "",
         )
-        # Dias de la semana en los que el centro atiende (0 = lunes).
-        # El calendario del paso 2 deshabilita los demas.
-        contexto["dias_abiertos"] = list(
-            HorarioAtencion.objects.values_list("dia_semana", flat=True).distinct()
-        )
+
+        nodos = []
+        for numero in range(1, 5):
+            if numero < paso:
+                estado = "done"
+            elif numero == paso:
+                estado = "active"
+            else:
+                estado = "pending"
+
+            nodos.append(
+                {
+                    "numero": numero,
+                    "titulo": TITULOS_PASO[numero],
+                    "detalle": DETALLES_PASO[numero],
+                    "estado": estado,
+                    "url": self.url_paso(
+                        numero, pista, anio, mes, dia, hora, duracion
+                    ),
+                }
+            )
+
+        contexto["pistas"] = pistas
+        contexto["paso"] = paso
+        contexto["titulo_paso"] = f"Paso {paso} de 4: {TITULOS_PASO[paso]}"
+        contexto["progreso"] = paso * 25
+        contexto["nodos"] = nodos
+
+        contexto["pista_elegida"] = pista
+        contexto["dia_elegido"] = dia
+        contexto["nombre_dia"] = nombre_dia
+        contexto["hora_elegida"] = hora
+        contexto["hora_fin_texto"] = hora_fin
+        contexto["duracion_elegida"] = duracion
+        contexto["duracion_texto"] = texto_duracion(duracion) if duracion else ""
+        contexto["opciones_duracion"] = opciones
+
+        contexto["anio"] = anio
+        contexto["mes"] = mes
+        contexto["nombre_mes"] = f"{NOMBRES_MES[mes - 1]} {anio}"
+        contexto["mes_anterior"] = mes_anterior
+        contexto["mes_anterior_anio"] = anio_anterior
+        contexto["mes_siguiente"] = mes_siguiente
+        contexto["mes_siguiente_anio"] = anio_siguiente
+
+        contexto["semanas"] = semanas
+        contexto["slots"] = slots
+        contexto["horarios_libres"] = horarios_libres
+        contexto["total_pistas"] = disponibilidad["total_pistas"]
+        contexto["jugadores_texto"] = contexto["form"]["cantidad_jugadores"].value() or 4
+        contexto["total_estimado"] = total
+
         return contexto
 
     def form_valid(self, form):
@@ -150,6 +331,110 @@ class ReservaView(CreateView):
 # Cada cuanto tiempo se puede empezar una reserva: 30 minutos.
 PASO_MINUTOS = 30
 
+NOMBRES_MES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+NOMBRES_DIA = [
+    "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo",
+]
+TITULOS_PASO = {
+    1: "Seleccion de pista",
+    2: "Dia y horario",
+    3: "Horario y duracion",
+    4: "Tus datos",
+}
+DETALLES_PASO = {
+    1: "Tipo y tarifa",
+    2: "Calendario",
+    3: "Duracion",
+    4: "Datos",
+}
+
+
+def texto_duracion(minutos):
+    # Convierte 90 en "1 h 30 min", para mostrar en pantalla.
+    horas = minutos // 60
+    resto = minutos % 60
+
+    if horas == 0:
+        return f"{resto} min"
+    if resto == 0:
+        return f"{horas} h"
+    return f"{horas} h {resto} min"
+
+
+def sumar_minutos(hora, minutos):
+    # Devuelve la hora de fin, o "" si la reserva se pasaria de las 24 hs.
+    partes = hora.split(":")
+    total = int(partes[0]) * 60 + int(partes[1]) + minutos
+
+    if total >= 24 * 60:
+        return ""
+
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
+def armar_semanas(anio, mes, dias, dia_elegido, numero_pista):
+    # Arma la grilla del calendario: filas de 7 dias que arrancan el lunes.
+    primer_dia = date(anio, mes, 1)
+    arranque = primer_dia - timedelta(days=primer_dia.weekday())
+
+    semanas = []
+    semana = []
+
+    for numero in range(42):
+        fecha = arranque + timedelta(days=numero)
+
+        if fecha.month != mes:
+            semana.append({"numero": fecha.day, "estado": "fuera", "elegido": False})
+        else:
+            info = dias[fecha.isoformat()]
+            con_lugar = 0
+
+            for slot in info["slots"]:
+                if slot["libres"] > 0:
+                    con_lugar += 1
+
+            semana.append(
+                {
+                    "numero": fecha.day,
+                    "estado": info["estado"],
+                    "elegido": fecha == dia_elegido,
+                    "titulo": f"{con_lugar} horarios con lugar",
+                    "url": reverse("myapp:reserva")
+                    + "?"
+                    + urlencode(
+                        {
+                            "paso": 2,
+                            "pista": numero_pista,
+                            "anio": anio,
+                            "mes": mes,
+                            "dia": fecha.isoformat(),
+                        }
+                    ),
+                }
+            )
+
+        if len(semana) == 7:
+            semanas.append(semana)
+            semana = []
+
+    # Si la ultima fila es toda del mes siguiente, no se muestra.
+    while semanas:
+        fila_afuera = True
+
+        for dia in semanas[-1]:
+            if dia["estado"] != "fuera":
+                fila_afuera = False
+
+        if not fila_afuera:
+            break
+
+        semanas.pop()
+
+    return semanas
+
 
 def minutos_de(hora):
     # Convierte una hora (10:30) en minutos desde la medianoche (630).
@@ -187,6 +472,10 @@ def calcular_disponibilidad(anio, mes):
     hoy = date.today()
     dias = {}
 
+    # Si el dia es hoy, los horarios que ya pasaron no se ofrecen.
+    momento = timezone.localtime()
+    minutos_ahora = momento.hour * 60 + momento.minute
+
     for numero_dia in range(1, dias_del_mes + 1):
         fecha = date(anio, mes, numero_dia)
         clave = fecha.isoformat()
@@ -209,6 +498,10 @@ def calcular_disponibilidad(anio, mes):
 
             # Se ofrecen horarios de arranque cada 30 minutos.
             while desde + PASO_MINUTOS <= hasta:
+                if fecha == hoy and desde < minutos_ahora:
+                    desde += PASO_MINUTOS
+                    continue
+
                 fin_slot = desde + PASO_MINUTOS
                 ocupadas = 0
 
@@ -225,9 +518,18 @@ def calcular_disponibilidad(anio, mes):
                 )
                 desde += PASO_MINUTOS
 
-        if all(slot["libres"] == slot["total"] for slot in slots):
+        todas_libres = True
+        todas_ocupadas = True
+
+        for slot in slots:
+            if slot["libres"] != slot["total"]:
+                todas_libres = False
+            if slot["libres"] != 0:
+                todas_ocupadas = False
+
+        if todas_libres:
             estado = "libre"
-        elif all(slot["libres"] == 0 for slot in slots):
+        elif todas_ocupadas:
             estado = "completo"
         else:
             estado = "parcial"
@@ -235,24 +537,6 @@ def calcular_disponibilidad(anio, mes):
         dias[clave] = {"estado": estado, "slots": slots}
 
     return {"anio": anio, "mes": mes, "total_pistas": total_pistas, "dias": dias}
-
-
-class DisponibilidadView(View):
-    # Devuelve el mapa de disponibilidad de un mes en JSON (para el calendario).
-
-    def get(self, request):
-        hoy = date.today()
-
-        try:
-            anio = int(request.GET.get("anio", hoy.year))
-            mes = int(request.GET.get("mes", hoy.month))
-        except (TypeError, ValueError):
-            return JsonResponse({"error": "anio y mes tienen que ser numeros"}, status=400)
-
-        if mes < 1 or mes > 12 or anio < 2000 or anio > 2100:
-            return JsonResponse({"error": "mes o anio fuera de rango"}, status=400)
-
-        return JsonResponse(calcular_disponibilidad(anio, mes))
 
 
 class ConsultaReservaView(FormView):
