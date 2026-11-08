@@ -245,6 +245,10 @@ class Reserva(models.Model):
         if errores:
             raise ValidationError(errores)
 
+    def sePuedePedir(self):
+        # Una reserva cancelada ya no admite pedidos de cafeteria.
+        return self.estado_id and self.estado.nombre != "cancelada"
+
     def sePuedeCancelar(self):
         # Solo se cancela una reserva pendiente de pago que todavia no empezo.
         if self.estado_id and self.estado.nombre != "pendiente_a_pago":
@@ -274,13 +278,17 @@ class Reserva(models.Model):
         horas = Decimal(str(self.calcularDuracion())) / Decimal("60")
         return horas * self.precio_hora
 
-    def calcularCostoTotal(self):
-        total = self.calcularCostoPista()
+    def calcularCostoPedidos(self):
+        total = Decimal("0")
 
         for pedido in self.pedidos.all():
             total += pedido.calcularTotal()
 
         return total
+
+    def calcularCostoTotal(self):
+        # costo de la pista + todo lo pedido en la cafeteria
+        return self.calcularCostoPista() + self.calcularCostoPedidos()
 
     def save(self, *args, **kwargs):
         # _state.adding vale True solo cuando la reserva es nueva (todavia
@@ -388,6 +396,84 @@ class Participacion(models.Model):
             )
         ]
 
+    def siguienteTiro(self):
+        """
+        Devuelve (numero_frame, numero_lanzamiento) del proximo tiro del
+        jugador, o None si ya termino sus 10 frames.
+        """
+        tiros = {}
+
+        for lanz in self.lanzamientos.all():
+            tiros.setdefault(lanz.numero_frame, {})[
+                lanz.numero_lanzamiento
+            ] = lanz.pinos_derribados
+
+        for frame in range(1, 10):
+            del_frame = tiros.get(frame, {})
+
+            if 1 not in del_frame:
+                return (frame, 1)
+
+            # Con un strike el frame se termina con un solo tiro.
+            if del_frame[1] == 10:
+                continue
+
+            if 2 not in del_frame:
+                return (frame, 2)
+
+        decimo = tiros.get(10, {})
+
+        if 1 not in decimo:
+            return (10, 1)
+
+        if 2 not in decimo:
+            return (10, 2)
+
+        # En el frame 10 hay tercer tiro solo si hubo strike o spare.
+        hubo_bonus = decimo[1] == 10 or decimo[1] + decimo[2] == 10
+
+        if hubo_bonus and 3 not in decimo:
+            return (10, 3)
+
+        return None
+
+    def marcasPorFrame(self):
+        """Devuelve 10 textos para mostrar: 'X', '9 /', '8 1', etc."""
+        tiros = {}
+
+        for lanz in self.lanzamientos.order_by(
+            "numero_frame", "numero_lanzamiento"
+        ):
+            tiros.setdefault(lanz.numero_frame, []).append(
+                lanz.pinos_derribados
+            )
+
+        marcas = []
+
+        for frame in range(1, 11):
+            del_frame = tiros.get(frame, [])
+
+            if not del_frame:
+                marcas.append("")
+            elif frame < 10 and del_frame[0] == 10:
+                marcas.append("X")
+            elif (
+                frame < 10
+                and len(del_frame) == 2
+                and sum(del_frame) == 10
+            ):
+                marcas.append(f"{del_frame[0]} /")
+            elif frame == 10:
+                marcas.append(
+                    " · ".join(
+                        "X" if tiro == 10 else str(tiro) for tiro in del_frame
+                    )
+                )
+            else:
+                marcas.append(" · ".join(str(tiro) for tiro in del_frame))
+
+        return marcas
+
     def calcularPuntajeTotal(self):
         # 1) Traer todos los lanzamientos de este jugador, ordenados por frame
         lanzamientos = self.lanzamientos.order_by("numero_frame", "numero_lanzamiento")
@@ -409,33 +495,34 @@ class Participacion(models.Model):
 
             # CASO STRIKE: 10 pinos en el primer tiro del frame
             if primer_tiro == 10:
-                # el strike vale 10 + los 2 tiros siguientes
-                tiro_siguiente = 0
-                if posicion + 1 < len(tiros):
-                    tiro_siguiente = tiros[posicion + 1]
+                # Para valer, el strike necesita los 2 tiros siguientes.
+                # Si la partida esta en curso y todavia no los hay, se corta.
+                if posicion + 2 >= len(tiros):
+                    break
 
-                tiro_posterior = 0
-                if posicion + 2 < len(tiros):
-                    tiro_posterior = tiros[posicion + 2]
-
-                puntaje_total += 10 + tiro_siguiente + tiro_posterior
+                puntaje_total += 10 + tiros[posicion + 1] + tiros[posicion + 2]
                 posicion += 1  # el strike ocupa un solo tiro del frame
+                continue
+
+            # Sin segundo tiro el frame esta a medio jugar: no se suma nada.
+            if posicion + 1 >= len(tiros):
+                break
+
+            segundo_tiro = tiros[posicion + 1]
 
             # CASO SPARE: 10 pinos sumando los 2 tiros del frame
-            elif primer_tiro + tiros[posicion + 1] == 10:
-                # el spare vale 10 + el proximo tiro
-                tiro_siguiente = 0
-                if posicion + 2 < len(tiros):
-                    tiro_siguiente = tiros[posicion + 2]
+            if primer_tiro + segundo_tiro == 10:
+                # El spare vale 10 + el proximo tiro; sin ese tiro no vale.
+                if posicion + 2 >= len(tiros):
+                    break
 
-                puntaje_total += 10 + tiro_siguiente
+                puntaje_total += 10 + tiros[posicion + 2]
                 posicion += 2  # el spare ocupa los 2 tiros del frame
+                continue
 
             # CASO FRAME COMUN: se suman los pinos de los 2 tiros
-            else:
-                segundo_tiro = tiros[posicion + 1]
-                puntaje_total += primer_tiro + segundo_tiro
-                posicion += 2
+            puntaje_total += primer_tiro + segundo_tiro
+            posicion += 2
 
         return puntaje_total
 
@@ -515,6 +602,12 @@ class Lanzamiento(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+    def save(self, *args, **kwargs):
+        # Se valida siempre, tambien cuando el lanzamiento se crea por
+        # codigo y no desde el admin o un formulario.
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def esStrike(self):
         # Para ser strike hay que derribar los 10 pinos
