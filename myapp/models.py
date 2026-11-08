@@ -245,6 +245,10 @@ class Reserva(models.Model):
         if errores:
             raise ValidationError(errores)
 
+    def sePuedePedir(self):
+        # Una reserva cancelada ya no admite pedidos de cafeteria.
+        return self.estado_id and self.estado.nombre != "cancelada"
+
     def sePuedeCancelar(self):
         # Solo se cancela una reserva pendiente de pago que todavia no empezo.
         if self.estado_id and self.estado.nombre != "pendiente_a_pago":
@@ -274,13 +278,17 @@ class Reserva(models.Model):
         horas = Decimal(str(self.calcularDuracion())) / Decimal("60")
         return horas * self.precio_hora
 
-    def calcularCostoTotal(self):
-        total = self.calcularCostoPista()
+    def calcularCostoPedidos(self):
+        total = Decimal("0")
 
         for pedido in self.pedidos.all():
             total += pedido.calcularTotal()
 
         return total
+
+    def calcularCostoTotal(self):
+        # costo de la pista + todo lo pedido en la cafeteria
+        return self.calcularCostoPista() + self.calcularCostoPedidos()
 
     def save(self, *args, **kwargs):
         # _state.adding vale True solo cuando la reserva es nueva (todavia

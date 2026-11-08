@@ -1,5 +1,5 @@
 import calendar
-from datetime import date, time
+from datetime import date, datetime, time
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -7,11 +7,23 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, FormView, TemplateView
 
-from .forms import BuscarReservaForm, ReservaForm
-from .models import Cliente, EstadoReserva, HorarioAtencion, Pista, Reserva
+from .forms import AgregarProductoForm, BuscarReservaForm, ReservaForm
+from .models import (
+    Cliente,
+    EstadoPartida,
+    EstadoPedido,
+    EstadoReserva,
+    HorarioAtencion,
+    Partida,
+    Pedido,
+    Pista,
+    Producto,
+    Reserva,
+)
 
 
 class HomeView(TemplateView):
@@ -87,6 +99,17 @@ class ReservaView(CreateView):
                 # de atencion, duracion minima, capacidad y superposicion, y
                 # se congela el precio de la pista.
                 reserva.save()
+
+                # El enunciado pide que cada reserva registre como minimo
+                # una partida: se crea la partida 1, pendiente de empezar.
+                Partida.objects.create(
+                    reserva=reserva,
+                    numero=1,
+                    fecha_hora_inicio=timezone.make_aware(
+                        datetime.combine(reserva.fecha, reserva.hora_inicio)
+                    ),
+                    estado=EstadoPartida.objects.get(nombre="pendiente"),
+                )
         except ValidationError as error:
             self.agregar_errores_de_la_reserva(form, error)
             return self.form_invalid(form)
@@ -257,6 +280,14 @@ class DetalleReservaView(DetailView):
             "cliente", "pista__tipo_pista", "estado"
         )
 
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["productos"] = Producto.objects.all()
+        contexto["pedidos"] = self.object.pedidos.prefetch_related(
+            "detalles__producto"
+        ).select_related("estado")
+        return contexto
+
 
 class CancelarReservaView(View):
     """Cancela una reserva pendiente de pago que todavia no empezo."""
@@ -275,6 +306,46 @@ class CancelarReservaView(View):
                 request,
                 "Esta reserva no se puede cancelar: ya empezo o no esta "
                 "pendiente de pago.",
+            )
+
+        return redirect("myapp:detalle_reserva", codigo=reserva.codigo)
+
+
+class AgregarPedidoView(View):
+    """Suma un producto de la cafeteria a la reserva del cliente."""
+
+    def post(self, request, codigo):
+        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        form = AgregarProductoForm(request.POST)
+
+        if not form.is_valid():
+            messages.error(
+                request, "Revisa la cantidad: tiene que ser entre 1 y 20."
+            )
+            return redirect("myapp:detalle_reserva", codigo=reserva.codigo)
+
+        if not reserva.sePuedePedir():
+            messages.error(
+                request, "Esta reserva esta cancelada: no se pueden pedir cosas."
+            )
+            return redirect("myapp:detalle_reserva", codigo=reserva.codigo)
+
+        # Si la reserva ya tiene un pedido abierto se usa ese; si no, se abre.
+        estado_abierto = EstadoPedido.objects.get(nombre="abierto")
+        pedido, _ = Pedido.objects.get_or_create(
+            reserva=reserva, estado=estado_abierto
+        )
+
+        producto = form.cleaned_data["producto"]
+        cantidad = form.cleaned_data["cantidad"]
+
+        try:
+            pedido.agregarDetalle(producto, cantidad)
+        except ValidationError as error:
+            messages.error(request, f"No se pudo agregar: {error.message}")
+        else:
+            messages.success(
+                request, f"Agregado: {cantidad} x {producto.nombre}."
             )
 
         return redirect("myapp:detalle_reserva", codigo=reserva.codigo)

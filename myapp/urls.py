@@ -26,4 +26,9 @@ urlpatterns = [
         views.CancelarReservaView.as_view(),
         name="cancelar_reserva",
     ),
+    path(
+        "mi-reserva/<str:codigo>/pedido/",
+        views.AgregarPedidoView.as_view(),
+        name="agregar_pedido",
+    ),
 ]

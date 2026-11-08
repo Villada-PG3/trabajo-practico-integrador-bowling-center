@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Pista, Reserva
+from .models import Pista, Producto, Reserva
 
 
 class ReservaForm(forms.ModelForm):
@@ -105,3 +105,21 @@ class BuscarReservaForm(forms.Form):
             )
 
         return codigo
+
+
+class AgregarProductoForm(forms.Form):
+    """Un producto de la cafeteria para sumar a la reserva."""
+
+    producto = forms.ModelChoiceField(
+        queryset=Producto.objects.all(),
+        widget=forms.HiddenInput,
+    )
+    cantidad = forms.IntegerField(
+        min_value=1,
+        max_value=20,
+        initial=1,
+        label="Cantidad",
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "min": 1, "max": 20}
+        ),
+    )

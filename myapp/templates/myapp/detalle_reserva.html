@@ -76,6 +76,14 @@
             <div class="small text-muted text-uppercase" style="font-size:11px;">Teléfono</div>
             <div class="fw-semibold">{{ reserva.cliente.telefono }}</div>
           </div>
+          <div class="col-sm-6">
+            <div class="small text-muted text-uppercase" style="font-size:11px;">Partida</div>
+            {% for partida in reserva.partidas.all %}
+              <div class="fw-semibold">{{ partida.numero }} — {{ partida.estado.nombre }}</div>
+            {% empty %}
+              <div class="text-muted small">Sin partida</div>
+            {% endfor %}
+          </div>
         </div>
 
         <hr class="my-4">
@@ -86,10 +94,70 @@
             <div class="small">$ {{ reserva.precio_hora }} /h (precio congelado al reservar)</div>
           </div>
           <div class="text-end">
-            <div class="small text-muted text-uppercase" style="font-size:11px;">Costo de la pista</div>
-            <div class="fs-4 fw-bold">$ {{ reserva.calcularCostoPista|floatformat:2 }}</div>
+            <div class="small text-muted text-uppercase" style="font-size:11px;">Total de la reserva</div>
+            <div class="fs-4 fw-bold">$ {{ reserva.calcularCostoTotal|floatformat:2 }}</div>
+            <div class="text-muted" style="font-size:11px;">
+              pista $ {{ reserva.calcularCostoPista|floatformat:2 }} + pedidos $ {{ reserva.calcularCostoPedidos|floatformat:2 }}
+            </div>
           </div>
         </div>
+
+        {% if reserva.sePuedePedir and productos %}
+          <hr class="my-4">
+
+          <span class="badge-caps d-block mb-3" style="color: var(--brand-outline);">Cafetería</span>
+
+          <div class="row g-2">
+            {% for producto in productos %}
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center gap-3 p-3 rounded-4"
+                     style="background: var(--brand-surface-low);">
+                  <div>
+                    <div class="fw-semibold small">{{ producto.nombre }}</div>
+                    <div class="text-muted" style="font-size:12px;">
+                      {{ producto.get_tipo_display }} · $ {{ producto.precio }}
+                    </div>
+                  </div>
+                  <form method="post" action="{% url 'myapp:agregar_pedido' reserva.codigo %}"
+                        class="d-flex align-items-center gap-2 no-imprimir">
+                    {% csrf_token %}
+                    <input type="hidden" name="producto" value="{{ producto.pk }}">
+                    <input type="number" name="cantidad" value="1" min="1" max="20"
+                           class="form-control form-control-sm" style="width: 70px;">
+                    <button class="btn btn-sm btn-brand-light" type="submit">Agregar</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          {% if pedidos %}
+            <div class="mt-4">
+              <span class="badge-caps d-block mb-2" style="color: var(--brand-outline);">Tus pedidos</span>
+
+              {% for pedido in pedidos %}
+                <div class="border rounded-4 p-3 mb-2">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-muted">Pedido #{{ pedido.pk }}</span>
+                    <span class="badge rounded-pill" style="background:#eef2f8;color:#3b4a63;">{{ pedido.estado.nombre }}</span>
+                  </div>
+
+                  {% for detalle in pedido.detalles.all %}
+                    <div class="d-flex justify-content-between small">
+                      <span>{{ detalle.cantidad }} x {{ detalle.producto.nombre }}</span>
+                      <span>$ {{ detalle.calcularSubtotal|floatformat:2 }}</span>
+                    </div>
+                  {% endfor %}
+
+                  <div class="d-flex justify-content-between small fw-semibold mt-2 pt-2 border-top">
+                    <span>Total del pedido</span>
+                    <span>$ {{ pedido.calcularTotal|floatformat:2 }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endif %}
 
         <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mt-4 pt-4 border-top no-imprimir">
           <a class="btn btn-light px-4" href="{% url 'myapp:consulta_reserva' %}">
