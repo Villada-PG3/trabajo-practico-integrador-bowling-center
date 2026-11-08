@@ -31,4 +31,19 @@ urlpatterns = [
         views.AgregarPedidoView.as_view(),
         name="agregar_pedido",
     ),
+    path(
+        "mi-reserva/<str:codigo>/juego/",
+        views.PartidaView.as_view(),
+        name="partida",
+    ),
+    path(
+        "mi-reserva/<str:codigo>/juego/tirar/",
+        views.TirarView.as_view(),
+        name="tirar",
+    ),
+    path(
+        "mi-reserva/<str:codigo>/juego/jugador/",
+        views.AgregarJugadorJuegoView.as_view(),
+        name="agregar_jugador_partida",
+    ),
 ]
