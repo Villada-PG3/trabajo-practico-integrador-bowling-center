@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 
 # Modelos de Tipo y Estado
@@ -219,7 +219,10 @@ class Reserva(models.Model):
         return total
 
     def save(self, *args, **kwargs):
-        if self.pista_id and not self.pk:
+        # _state.adding vale True solo cuando la reserva es nueva (todavia
+        # no esta guardada en la base). Asi el precio de la pista se copia
+        # una sola vez, al crear la reserva, y no se pisa al editarla.
+        if self.pista_id and self._state.adding:
             self.precio_hora = self.pista.obtenerPrecioHora()
 
         self.full_clean()
@@ -520,7 +523,11 @@ class Pedido(models.Model):
         related_name="pedidos"
     )
 
+    @transaction.atomic
     def agregarDetalle(self, producto, cantidad):
+        # @transaction.atomic: todo lo de abajo es una sola operacion.
+        # Si algo falla (por ejemplo el detalle), Django deshace los
+        # cambios y el pedido NO queda guardado a medias.
         if cantidad < 1:
             raise ValidationError("La cantidad debe ser como mínimo 1.")
 
