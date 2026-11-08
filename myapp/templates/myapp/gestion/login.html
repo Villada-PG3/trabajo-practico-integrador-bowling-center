@@ -1,0 +1,49 @@
+{% extends 'myapp/base.html' %}
+{% load static %}
+
+{% block title %}Acceso Staff — Pins & Co.{% endblock %}
+
+{% block content %}
+<div class="container-xl py-5" style="min-height: 70vh;">
+  <div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="bg-white card-rounded p-4 p-md-5 shadow-sm">
+        <div class="text-center mb-4">
+          <div class="icon-bubble mx-auto mb-3" style="background: var(--brand-primary); color: white; width: 56px; height: 56px;">
+            <i class="bi bi-shield-lock fs-4"></i>
+          </div>
+          <h1 class="font-heading fw-bold fs-4">Panel Staff</h1>
+          <p class="small text-muted">Acceso exclusivo para el equipo de Pins & Co.</p>
+        </div>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-danger small">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Usuario</label>
+            <input type="text" name="username" class="form-control" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-semibold">Contraseña</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-brand-primary w-100 py-2">
+            Entrar al Panel
+          </button>
+        </form>
+
+        <div class="text-center mt-4">
+          <a href="{% url 'home' %}" class="small text-muted text-decoration-none">
+            ← Volver al sitio
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

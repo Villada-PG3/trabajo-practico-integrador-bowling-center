@@ -1,0 +1,138 @@
+{% extends 'myapp/base.html' %}
+{% load static %}
+
+{% block title %}Panel de Administración — Pins & Co.{% endblock %}
+
+{% block content %}
+<div class="container-xl py-4 py-lg-5">
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <span class="badge-caps" style="color: var(--brand-primary);">Panel Staff</span>
+      <h1 class="font-heading fw-bold fs-3 mb-0">Gestión del Club</h1>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge rounded-pill bg-light text-dark px-3 py-2">
+        <i class="bi bi-person-circle me-1"></i> {{ request.user.username }}
+      </span>
+      <a href="{% url 'logout_staff' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+        Cerrar sesión
+      </a>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-success alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- PISTAS -->
+    <div class="col-lg-7">
+      <div class="bg-white card-rounded p-4 shadow-sm h-100">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="font-heading fw-bold fs-5 mb-0">Pistas</h2>
+          <a href="{% url 'pista_crear' %}" class="btn btn-brand-primary btn-sm px-3">
+            <i class="bi bi-plus-lg me-1"></i> Nueva Pista
+          </a>
+        </div>
+
+        {% if pistas %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr class="small text-muted">
+                  <th>#</th>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Precio</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in pistas %}
+                <tr>
+                  <td class="fw-bold">{{ p.numero|stringformat:"02d" }}</td>
+                  <td>
+                    {{ p.nombre }}
+                    {% if p.destacada %}
+                      <span class="badge bg-warning text-dark ms-1" style="font-size:10px;">VIP</span>
+                    {% endif %}
+                  </td>
+                  <td><span class="badge bg-light text-dark">{{ p.get_tipo_display }}</span></td>
+                  <td>{{ p.precio_hora }} €</td>
+                  <td>
+                    {% if p.disponible %}
+                      <span class="badge" style="background:var(--brand-secondary-bg);color:var(--brand-secondary);">Libre</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Ocupada</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'pista_editar' p.pk %}" class="btn btn-sm btn-light">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'pista_eliminar' p.pk %}" class="btn btn-sm btn-light text-danger">
+                      <i class="bi bi-trash"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No hay pistas creadas todavía.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- HORARIOS -->
+    <div class="col-lg-5">
+      <div class="bg-white card-rounded p-4 shadow-sm h-100">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="font-heading fw-bold fs-5 mb-0">Horarios</h2>
+          <a href="{% url 'horario_crear' %}" class="btn btn-brand-primary btn-sm px-3">
+            <i class="bi bi-plus-lg me-1"></i> Nuevo
+          </a>
+        </div>
+
+        {% if horarios %}
+          <div class="d-flex flex-column gap-2">
+            {% for h in horarios %}
+            <div class="d-flex align-items-center justify-content-between p-3 rounded-3" style="background:var(--brand-surface-low);">
+              <div>
+                <span class="fw-semibold">{{ h.hora|time:"H:i" }}</span>
+                <span class="badge ms-2 {% if h.turno == 'tarde' %}bg-warning text-dark{% else %}bg-dark{% endif %}" style="font-size:10px;">
+                  {{ h.get_turno_display }}
+                </span>
+                {% if not h.activo %}
+                  <span class="badge bg-secondary ms-1" style="font-size:10px;">Inactivo</span>
+                {% endif %}
+              </div>
+              <div>
+                <a href="{% url 'horario_editar' h.pk %}" class="btn btn-sm btn-light">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <a href="{% url 'horario_eliminar' h.pk %}" class="btn btn-sm btn-light text-danger">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No hay horarios creados.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
