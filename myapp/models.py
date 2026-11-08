@@ -30,14 +30,6 @@ class TipoPista(models.Model):
                 "nombre": "El nombre debe ser SMALL, MEDIUM o LARGE."
             })
 
-    def validarPrecioHora(self):
-        if self.precio_hora <= 0:
-            raise ValidationError("El precio por hora debe ser positivo.")
-
-    def validarCapacidad(self):
-        if self.capacidad_maxima < 1:
-            raise ValidationError("La capacidad debe ser como mínimo 1.")
-
     def __str__(self):
         return self.nombre
 
@@ -69,17 +61,6 @@ class Cliente(models.Model):
     direccion = models.CharField(max_length=200)
     telefono = models.CharField(max_length=30)
     email = models.CharField(max_length=100)
-
-    def asignarDatos(self, nombre, direccion, telefono, email):
-        self.nombre = nombre
-        self.direccion = direccion
-        self.telefono = telefono
-        self.email = email
-
-    def validarEmail(self):
-        from django.core.validators import validate_email
-
-        validate_email(self.email)
 
     def __str__(self):
         return self.nombre
@@ -236,16 +217,6 @@ class Reserva(models.Model):
             total += pedido.calcularTotal()
 
         return total
-
-    def validarDisponibilidad(self):
-        if not self.pista.estaDisponible(
-            self.fecha, self.hora_inicio, self.hora_fin
-        ):
-            raise ValidationError("La pista no está disponible.")
-
-    def validarCapacidad(self):
-        if self.cantidad_jugadores > self.pista.obtenerCapacidadMaxima():
-            raise ValidationError("Se supera la capacidad de la pista.")
 
     def save(self, *args, **kwargs):
         if self.pista_id and not self.pk:
