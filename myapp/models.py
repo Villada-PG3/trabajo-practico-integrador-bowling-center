@@ -1,8 +1,11 @@
+import secrets
+from datetime import datetime
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
+from django.utils import timezone
 
 # Modelos de Tipo y Estado
 # TipoPista: los tipos de pista que ofrece el centro (chica, mediana, grande, vip...).
@@ -117,11 +120,27 @@ class Pista(models.Model):
     def __str__(self):
         return f"Pista {self.numero_pista}"
 
+# Letras y numeros sin los que se confunden al leerlos (0/O, 1/I).
+CODIGO_ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generar_codigo_reserva(largo=8):
+    """Devuelve un codigo publico que todavia no use ninguna reserva."""
+    while True:
+        codigo = "".join(secrets.choice(CODIGO_ALFABETO) for _ in range(largo))
+
+        if not Reserva.objects.filter(codigo=codigo).exists():
+            return codigo
+
+
 # Reserva: una pista reservada por un cliente en una fecha y horario.
 # Guarda el precio de ese momento en precio_hora para que no cambie despues
 # si el centro sube los precios (el precio queda congelado en la reserva).
 class Reserva(models.Model):
     id_reserva = models.AutoField(primary_key=True)
+    # Codigo publico de la reserva: se lo damos al cliente para que despues
+    # pueda consultarla o cancelarla sin tener usuario en el sistema.
+    codigo = models.CharField(max_length=8, unique=True, editable=False)
     cliente = models.ForeignKey(
         Cliente,
         on_delete=models.PROTECT,
@@ -226,6 +245,17 @@ class Reserva(models.Model):
         if errores:
             raise ValidationError(errores)
 
+    def sePuedeCancelar(self):
+        # Solo se cancela una reserva pendiente de pago que todavia no empezo.
+        if self.estado_id and self.estado.nombre != "pendiente_a_pago":
+            return False
+
+        comienzo = timezone.make_aware(
+            datetime.combine(self.fecha, self.hora_inicio)
+        )
+
+        return comienzo > timezone.now()
+
     def calcularDuracion(self):
         inicio = (
             self.hora_inicio.hour * 60
@@ -258,6 +288,10 @@ class Reserva(models.Model):
         # una sola vez, al crear la reserva, y no se pisa al editarla.
         if self.pista_id and self._state.adding:
             self.precio_hora = self.pista.obtenerPrecioHora()
+
+        # El codigo se genera una sola vez, cuando la reserva es nueva.
+        if not self.codigo:
+            self.codigo = generar_codigo_reserva()
 
         self.full_clean()
         super().save(*args, **kwargs)

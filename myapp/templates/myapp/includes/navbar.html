@@ -18,6 +18,7 @@
         <a class="nav-link" href="{% url 'myapp:home' %}#sobre-nosotros">Sobre Nosotros</a>
         <a class="nav-link" href="{% url 'myapp:home' %}#pistas">Pistas</a>
         <a class="nav-link" href="{% url 'myapp:home' %}#ubicacion">Ubicación</a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'consulta_reserva' or request.resolver_match.url_name == 'detalle_reserva' %}active{% endif %}" href="{% url 'myapp:consulta_reserva' %}">Mi reserva</a>
       </nav>
 
             <!-- Right -->

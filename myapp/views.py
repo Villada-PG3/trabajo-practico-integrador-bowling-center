@@ -5,11 +5,12 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import JsonResponse
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
 from django.views import View
-from django.views.generic import CreateView, TemplateView
+from django.views.generic import CreateView, DetailView, FormView, TemplateView
 
-from .forms import ReservaForm
+from .forms import BuscarReservaForm, ReservaForm
 from .models import Cliente, EstadoReserva, HorarioAtencion, Pista, Reserva
 
 
@@ -93,12 +94,18 @@ class ReservaView(CreateView):
         self.object = reserva
         messages.success(
             self.request,
-            "Reserva confirmada. Pista "
-            f"{reserva.pista.numero_pista} el {reserva.fecha} de "
-            f"{reserva.hora_inicio:%H:%M} a {reserva.hora_fin:%H:%M}. "
-            "Queda pendiente de pago.",
+            "Reserva confirmada. Tu codigo es "
+            f"{reserva.codigo}. Pista {reserva.pista.numero_pista} el "
+            f"{reserva.fecha} de {reserva.hora_inicio:%H:%M} a "
+            f"{reserva.hora_fin:%H:%M}. Queda pendiente de pago.",
         )
         return super().form_valid(form)
+
+    def get_success_url(self):
+        # Despues de reservar mostramos el detalle, con el codigo bien visible.
+        return reverse(
+            "myapp:detalle_reserva", kwargs={"codigo": self.object.codigo}
+        )
 
     def agregar_errores_de_la_reserva(self, form, error):
         """
@@ -222,3 +229,52 @@ class DisponibilidadView(View):
             return JsonResponse({"error": "mes o anio fuera de rango"}, status=400)
 
         return JsonResponse(calcular_disponibilidad(anio, mes))
+
+
+class ConsultaReservaView(FormView):
+    """El cliente busca su reserva con el codigo."""
+
+    template_name = "myapp/consulta_reserva.html"
+    form_class = BuscarReservaForm
+
+    def form_valid(self, form):
+        return redirect(
+            "myapp:detalle_reserva", codigo=form.cleaned_data["codigo"]
+        )
+
+
+class DetalleReservaView(DetailView):
+    """Muestra la reserva completa a partir del codigo."""
+
+    model = Reserva
+    template_name = "myapp/detalle_reserva.html"
+    context_object_name = "reserva"
+    slug_field = "codigo"
+    slug_url_kwarg = "codigo"
+
+    def get_queryset(self):
+        return super().get_queryset().select_related(
+            "cliente", "pista__tipo_pista", "estado"
+        )
+
+
+class CancelarReservaView(View):
+    """Cancela una reserva pendiente de pago que todavia no empezo."""
+
+    def post(self, request, codigo):
+        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+
+        if reserva.sePuedeCancelar():
+            reserva.estado = EstadoReserva.objects.get(nombre="cancelada")
+            reserva.save()
+            messages.success(
+                request, "La reserva quedo cancelada y la pista quedo libre."
+            )
+        else:
+            messages.error(
+                request,
+                "Esta reserva no se puede cancelar: ya empezo o no esta "
+                "pendiente de pago.",
+            )
+
+        return redirect("myapp:detalle_reserva", codigo=reserva.codigo)
