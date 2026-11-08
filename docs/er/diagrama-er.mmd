@@ -14,9 +14,12 @@ erDiagram
     ESTADO_PEDIDO ||--o{ PEDIDO : clasifica
     ESTADO_PARTIDA ||--o{ PARTIDA : clasifica
 
+    %% HORARIO_ATENCION no tiene FK: Reserva.clean() lo consulta para
+    %% validar que la reserva caiga dentro del horario de atencion del dia.
+
     TIPO_PISTA {
         int id_tipo_pista PK
-        varchar nombre "SMALL / MEDIUM / LARGE"
+        varchar nombre "libre y unico (lo define el centro)"
         varchar descripcion
         decimal precio_hora
         int capacidad_maxima
@@ -26,32 +29,42 @@ erDiagram
     PISTA {
         int numero_pista PK
         int id_tipo_pista FK
+        decimal precio_hora "nulable: si esta vacio usa el del tipo"
+        bool disponible
+    }
+
+    HORARIO_ATENCION {
+        int id_horario PK
+        int dia_semana "0 lunes .. 6 domingo"
+        time hora_apertura
+        time hora_cierre
     }
 
     CLIENTE {
-        int numero_cliente PK
+        int id_cliente PK
         varchar nombre
         varchar direccion
         varchar telefono
-        varchar email
+        varchar email "unico"
     }
 
     JUGADOR {
         int id_jugador PK
         varchar nombre
-        int numero_cliente FK "nulable, UNIQUE (0..1)"
+        int id_cliente FK "nulable, UNIQUE (0..1)"
     }
 
     RESERVA {
         int id_reserva PK
-        int numero_cliente FK
+        varchar codigo "8 caracteres, unico, publico"
+        int id_cliente FK
         int numero_pista FK
         date fecha
         time hora_inicio
         time hora_fin
         int id_estado_reserva FK
         int cantidad_jugadores
-        decimal precio_hora
+        decimal precio_hora "snapshot del precio al reservar"
     }
 
     ESTADO_RESERVA {

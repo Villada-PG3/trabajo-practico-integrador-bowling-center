@@ -1,13 +1,19 @@
 classDiagram
 
 class TipoPista{
-    -str nombre
+    -str nombre "libre y unico"
     -str descripcion
     -Decimal precio_hora
     -int capacidad_maxima
-    -int duracion_minima
-    +validarPrecioHora()
-    +validarCapacidad()
+    -int duracion_minima "en horas"
+    +clean()
+}
+
+class HorarioAtencion{
+    -int dia_semana "0 lunes .. 6 domingo"
+    -time hora_apertura
+    -time hora_cierre
+    +clean()
 }
 
 class EstadoReserva{
@@ -23,18 +29,18 @@ class EstadoPartida{
 }
 
 class Cliente{
-    -str numeroCliente
+    -int id_cliente
     -str nombre
     -str direccion
     -str telefono
-    -str email
-    +asignarDatos()
-    +validarEmail()
+    -str email "EmailField unico"
 }
 
 class Pista{
-    -int numero
-    -TipoPista tipo
+    -int numero_pista
+    -TipoPista tipo_pista
+    -Decimal precio_hora "nulable: si esta vacio usa el del tipo"
+    -bool disponible
     +obtenerCapacidadMaxima()
     +obtenerPrecioHora()
     +obtenerDuracionMinima()
@@ -42,6 +48,7 @@ class Pista{
 }
 
 class Reserva{
+    -str codigo "8 caracteres, unico, publico"
     -Cliente cliente
     -Pista pista
     -date fecha
@@ -51,11 +58,12 @@ class Reserva{
     -int cantidadJugadores
     -Decimal precioHora "snapshot"
     +clean()
+    +save()
+    +sePuedeCancelar()
     +calcularDuracion()
     +calcularCostoPista()
     +calcularCostoTotal()
-    +validarDisponibilidad()
-    +validarCapacidad()
+    +generarCodigoReserva() "funcion del modulo"
 }
 
 class Producto{
