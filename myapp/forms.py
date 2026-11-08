@@ -4,18 +4,16 @@ from .models import Pista, Producto, Reserva
 
 
 class ReservaForm(forms.ModelForm):
-    """
-    Formulario de reserva del sitio publico.
-
-    Los campos pista, fecha, hora_inicio, hora_fin y cantidad_jugadores son
-    del modelo Reserva. Los datos del titular (nombre, direccion, telefono y
-    email) no existen en Reserva: son campos extra que la vista usa para
-    crear el Cliente y asociarlo a la reserva.
-
-    El formulario NO repite las reglas de negocio (horario de atencion,
-    duracion minima, capacidad y superposicion): eso ya lo valida
-    Reserva.clean(), que se ejecuta en Reserva.save().
-    """
+    # Formulario de reserva del sitio publico.
+    #
+    # Los campos pista, fecha, hora_inicio, hora_fin y cantidad_jugadores son
+    # del modelo Reserva. Los datos del titular (nombre, direccion, telefono y
+    # email) no existen en Reserva: son campos extra que la vista usa para
+    # crear el Cliente y asociarlo a la reserva.
+    #
+    # El formulario NO repite las reglas de negocio (horario de atencion,
+    # duracion minima, capacidad y superposicion): eso ya lo valida
+    # Reserva.clean(), que se ejecuta en Reserva.save().
 
     nombre = forms.CharField(
         max_length=100,
@@ -67,7 +65,7 @@ class ReservaForm(forms.ModelForm):
         # Solo se pueden reservar pistas marcadas como disponibles.
         self.fields["pista"].queryset = Pista.objects.filter(
             disponible=True
-        ).select_related("tipo_pista")
+        )
         self.fields["pista"].empty_label = "Elegi una pista"
         # Arranca en 4 jugadores, que es lo mas comun; se puede cambiar.
         if not self.is_bound:
@@ -82,7 +80,7 @@ class ReservaForm(forms.ModelForm):
 
 
 class BuscarReservaForm(forms.Form):
-    """El cliente escribe el codigo que le dimos al reservar."""
+    # El cliente escribe el codigo que le dimos al reservar.
 
     codigo = forms.CharField(
         max_length=8,
@@ -108,7 +106,7 @@ class BuscarReservaForm(forms.Form):
 
 
 class AgregarProductoForm(forms.Form):
-    """Un producto de la cafeteria para sumar a la reserva."""
+    # Un producto de la cafeteria para sumar a la reserva.
 
     producto = forms.ModelChoiceField(
         queryset=Producto.objects.all(),
@@ -123,3 +121,27 @@ class AgregarProductoForm(forms.Form):
             attrs={"class": "form-control", "min": 1, "max": 20}
         ),
     )
+
+
+class AgregarJugadorForm(forms.Form):
+    # Nombre del jugador que se suma a la partida.
+
+    nombre = forms.CharField(
+        max_length=100,
+        label="Nombre del jugador",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+
+
+class TirarForm(forms.Form):
+    # Cuantos pinos derribo el jugador en este tiro.
+
+    pinos = forms.IntegerField(
+        min_value=0,
+        max_value=10,
+        label="Pinos",
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "min": 0, "max": 10}
+        ),
+    )
+

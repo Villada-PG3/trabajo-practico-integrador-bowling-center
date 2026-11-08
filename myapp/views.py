@@ -11,7 +11,13 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, FormView, TemplateView
 
-from .forms import AgregarProductoForm, BuscarReservaForm, ReservaForm
+from .forms import (
+    AgregarJugadorForm,
+    AgregarProductoForm,
+    BuscarReservaForm,
+    ReservaForm,
+    TirarForm,
+)
 from .models import (
     Cliente,
     Jugador,
@@ -30,7 +36,7 @@ from .models import (
 
 
 class HomeView(TemplateView):
-    """Pagina de inicio del sitio publico."""
+    # Pagina de inicio del sitio publico.
 
     template_name = "myapp/home.html"
 
@@ -39,18 +45,15 @@ class HomeView(TemplateView):
         # La seccion "Pistas" del home muestra las pistas reales cargadas.
         contexto["pistas"] = Pista.objects.filter(
             disponible=True
-        ).select_related("tipo_pista")
+        )
         return contexto
 
 
 class ReservaView(CreateView):
-    """
-    GET: muestra el formulario de reserva vacio.
-    POST: valida el formulario, crea el Cliente y guarda la Reserva en
-    estado pendiente_a_pago.
-
-    Es un CreateView porque el objetivo de la vista es crear una Reserva.
-    """
+    # GET: muestra el formulario de reserva vacio.
+    # POST: valida el formulario, crea el Cliente y guarda la Reserva en
+    # estado pendiente_a_pago.
+    # Es un CreateView porque el objetivo de la vista es crear una Reserva.
 
     model = Reserva
     form_class = ReservaForm
@@ -62,7 +65,7 @@ class ReservaView(CreateView):
         # Las pistas se muestran como tarjetas en el paso 1 del formulario.
         contexto["pistas"] = Pista.objects.filter(
             disponible=True
-        ).select_related("tipo_pista")
+        )
         # Dias de la semana en los que el centro atiende (0 = lunes).
         # El calendario del paso 2 deshabilita los demas.
         contexto["dias_abiertos"] = list(
@@ -134,11 +137,9 @@ class ReservaView(CreateView):
         )
 
     def agregar_errores_de_la_reserva(self, form, error):
-        """
-        Pasa los errores de Reserva.clean() al formulario, para que se vean
-        al lado del campo que corresponde (pista, fecha, hora_fin, etc.) y
-        no como un error 500.
-        """
+        # Pasa los errores de Reserva.clean() al formulario, para que se vean
+        # al lado del campo que corresponde (pista, fecha, hora_fin, etc.) y
+        # no como un error 500.
         for campo, mensajes in error.message_dict.items():
             if campo not in form.fields:
                 campo = None  # errores generales -> arriba del formulario
@@ -151,20 +152,17 @@ PASO_MINUTOS = 30
 
 
 def minutos_de(hora):
-    """Convierte una hora (10:30) en minutos desde la medianoche (630)."""
+    # Convierte una hora (10:30) en minutos desde la medianoche (630).
     return hora.hour * 60 + hora.minute
 
 
 def calcular_disponibilidad(anio, mes):
-    """
-    Arma el mapa de ocupacion del mes, dia por dia y franja por franja.
-
-    Para cada dia devuelve:
-      estado: libre (ninguna reserva), parcial (algunas), completo (todas
-              las pistas tomadas), cerrado (no hay horario ese dia) o
-              pasado (ya paso).
-      slots:  las franjas de 30 minutos con cuantas pistas quedan libres.
-    """
+    # Arma el mapa de ocupacion del mes, dia por dia y franja por franja.
+    # Para cada dia devuelve:
+    # estado: libre (ninguna reserva), parcial (algunas), completo (todas
+    # las pistas tomadas), cerrado (no hay horario ese dia) o
+    # pasado (ya paso).
+    # slots:  las franjas de 30 minutos con cuantas pistas quedan libres.
     pistas = Pista.objects.filter(disponible=True)
     total_pistas = pistas.count()
 
@@ -240,7 +238,7 @@ def calcular_disponibilidad(anio, mes):
 
 
 class DisponibilidadView(View):
-    """Devuelve el mapa de disponibilidad de un mes en JSON (para el calendario)."""
+    # Devuelve el mapa de disponibilidad de un mes en JSON (para el calendario).
 
     def get(self, request):
         hoy = date.today()
@@ -258,7 +256,7 @@ class DisponibilidadView(View):
 
 
 class ConsultaReservaView(FormView):
-    """El cliente busca su reserva con el codigo."""
+    # El cliente busca su reserva con el codigo.
 
     template_name = "myapp/consulta_reserva.html"
     form_class = BuscarReservaForm
@@ -270,7 +268,7 @@ class ConsultaReservaView(FormView):
 
 
 class DetalleReservaView(DetailView):
-    """Muestra la reserva completa a partir del codigo."""
+    # Muestra la reserva completa a partir del codigo.
 
     model = Reserva
     template_name = "myapp/detalle_reserva.html"
@@ -279,21 +277,17 @@ class DetalleReservaView(DetailView):
     slug_url_kwarg = "codigo"
 
     def get_queryset(self):
-        return super().get_queryset().select_related(
-            "cliente", "pista__tipo_pista", "estado"
-        )
+        return super().get_queryset()
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["productos"] = Producto.objects.all()
-        contexto["pedidos"] = self.object.pedidos.prefetch_related(
-            "detalles__producto"
-        ).select_related("estado")
+        contexto["pedidos"] = self.object.pedidos.all()
         return contexto
 
 
 class CancelarReservaView(View):
-    """Cancela una reserva pendiente de pago que todavia no empezo."""
+    # Cancela una reserva pendiente de pago que todavia no empezo.
 
     def post(self, request, codigo):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
@@ -315,7 +309,7 @@ class CancelarReservaView(View):
 
 
 class AgregarPedidoView(View):
-    """Suma un producto de la cafeteria a la reserva del cliente."""
+    # Suma un producto de la cafeteria a la reserva del cliente.
 
     def post(self, request, codigo):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
@@ -342,20 +336,14 @@ class AgregarPedidoView(View):
         producto = form.cleaned_data["producto"]
         cantidad = form.cleaned_data["cantidad"]
 
-        try:
-            pedido.agregarDetalle(producto, cantidad)
-        except ValidationError as error:
-            messages.error(request, f"No se pudo agregar: {error.message}")
-        else:
-            messages.success(
-                request, f"Agregado: {cantidad} x {producto.nombre}."
-            )
+        pedido.agregarDetalle(producto, cantidad)
+        messages.success(request, f"Agregado: {cantidad} x {producto.nombre}.")
 
         return redirect("myapp:detalle_reserva", codigo=reserva.codigo)
 
 
 def obtener_partida(reserva):
-    """Devuelve la partida de la reserva; si no tiene, crea la primera."""
+    # Devuelve la partida de la reserva; si no tiene, crea la primera.
     partida = reserva.partidas.first()
 
     if partida is None:
@@ -372,7 +360,7 @@ def obtener_partida(reserva):
 
 
 class PartidaView(DetailView):
-    """Pantalla para cargar los tiros de la partida."""
+    # Pantalla para cargar los tiros de la partida.
 
     model = Reserva
     template_name = "myapp/partida.html"
@@ -385,7 +373,7 @@ class PartidaView(DetailView):
         partida = obtener_partida(self.object)
 
         jugadores = []
-        for participacion in partida.participaciones.select_related("jugador"):
+        for participacion in partida.participaciones.all():
             jugadores.append(
                 {
                     "participacion": participacion,
@@ -396,9 +384,13 @@ class PartidaView(DetailView):
                 }
             )
 
-        terminada = bool(jugadores) and all(
-            jugador["siguiente"] is None for jugador in jugadores
-        )
+        terminada = bool(jugadores)
+
+        for jugador in jugadores:
+            if jugador["siguiente"] is not None:
+                terminada = False
+                break
+
 
         contexto["partida"] = partida
         contexto["jugadores"] = jugadores
@@ -408,7 +400,7 @@ class PartidaView(DetailView):
 
 
 class TirarView(View):
-    """Carga un lanzamiento del jugador en el proximo turno que le toca."""
+    # Carga un lanzamiento del jugador en el proximo turno que le toca.
 
     def post(self, request, codigo):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
@@ -416,21 +408,19 @@ class TirarView(View):
 
         participacion = Participacion.objects.filter(
             pk=request.POST.get("participacion"), partida=partida
-        ).select_related("jugador").first()
+        ).first()
 
         if participacion is None:
             messages.error(request, "No encontramos ese jugador en la partida.")
             return redirect("myapp:partida", codigo=reserva.codigo)
 
-        try:
-            pinos = int(request.POST.get("pinos", ""))
-        except ValueError:
+        form = TirarForm(request.POST)
+
+        if not form.is_valid():
             messages.error(request, "Pone cuantos pinos derribo (0 a 10).")
             return redirect("myapp:partida", codigo=reserva.codigo)
 
-        if pinos < 0 or pinos > 10:
-            messages.error(request, "Los pinos van de 0 a 10.")
-            return redirect("myapp:partida", codigo=reserva.codigo)
+        pinos = form.cleaned_data["pinos"]
 
         turno = participacion.siguienteTiro()
 
@@ -464,34 +454,42 @@ class TirarView(View):
         return redirect("myapp:partida", codigo=reserva.codigo)
 
     def actualizar_estado(self, partida):
-        """Pasa la partida a en_curso y a finalizada cuando todos terminaron."""
+        # Pasa la partida a en_curso y a finalizada cuando todos terminaron.
         participaciones = list(partida.participaciones.all())
 
         if not participaciones:
             return
 
-        if all(p.siguienteTiro() is None for p in participaciones):
+        todos_terminaron = True
+
+        for participacion in participaciones:
+            if participacion.siguienteTiro() is not None:
+                todos_terminaron = False
+                break
+
+        if todos_terminaron:
             nombre = "finalizada"
         else:
             nombre = "en_curso"
-
         if partida.estado.nombre != nombre:
             partida.estado = EstadoPartida.objects.get(nombre=nombre)
             partida.save()
 
 
 class AgregarJugadorJuegoView(View):
-    """Suma un jugador a la partida de la reserva."""
+    # Suma un jugador a la partida de la reserva.
 
     def post(self, request, codigo):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
         partida = obtener_partida(reserva)
 
-        nombre = (request.POST.get("nombre") or "").strip()
+        form = AgregarJugadorForm(request.POST)
 
-        if not nombre:
+        if not form.is_valid():
             messages.error(request, "Escribi el nombre del jugador.")
             return redirect("myapp:partida", codigo=reserva.codigo)
+
+        nombre = form.cleaned_data["nombre"]
 
         jugador = Jugador.objects.create(nombre=nombre)
 
