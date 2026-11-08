@@ -3,9 +3,10 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
-from django.db.models import Q
 
 # Modelos de Tipo y Estado
+# TipoPista: los tipos de pista que ofrece el centro (chica, mediana, grande, vip...).
+# Cada tipo define el precio por hora, cuantos jugadores entran y la duracion minima.
 class TipoPista(models.Model):
     id_tipo_pista = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=20, unique=True)
@@ -22,17 +23,11 @@ class TipoPista(models.Model):
         validators=[MinValueValidator(1)]
     )
 
-    def clean(self):
-        super().clean()
-
-        if self.nombre and self.nombre not in ["SMALL", "MEDIUM", "LARGE"]:
-            raise ValidationError({
-                "nombre": "El nombre debe ser SMALL, MEDIUM o LARGE."
-            })
-
     def __str__(self):
         return self.nombre
 
+# EstadoReserva: los estados posibles de una reserva (pendiente_a_pago, pagada, cancelada...).
+# Esta en una tabla aparte para que no se escriba cualquier texto a mano.
 class EstadoReserva(models.Model):
     id_estado_reserva = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=50, unique=True)
@@ -41,6 +36,7 @@ class EstadoReserva(models.Model):
     def __str__(self):
         return self.nombre
 
+# EstadoPedido: los estados del pedido de la confiteria (abierto, cerrado, cancelado).
 class EstadoPedido(models.Model):
     id_estado_pedido = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=50, unique=True)
@@ -48,6 +44,7 @@ class EstadoPedido(models.Model):
     def __str__(self):
         return self.nombre
 
+# EstadoPartida: los estados de la partida de bowling (en_curso, finalizada).
 class EstadoPartida(models.Model):
     id_estado_partida = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=50, unique=True)
@@ -55,6 +52,8 @@ class EstadoPartida(models.Model):
     def __str__(self):
         return self.nombre
 
+# Cliente: la persona que reserva. Se carga en el momento de la reserva,
+# no hay registro de usuarios. El email es unico para no duplicar clientes.
 class Cliente(models.Model):
     id_cliente = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
@@ -65,6 +64,8 @@ class Cliente(models.Model):
     def __str__(self):
         return self.nombre
 
+# Jugador: el que juega la partida. Puede estar asociado a un cliente o no,
+# porque tambien puede venir alguien suelto que no reservo.
 class Jugador(models.Model):
     id_jugador = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
@@ -82,8 +83,12 @@ class Jugador(models.Model):
     def __str__(self):
         return self.nombre
 
+# Pista: cada pista fisica del bowling. Toma el precio, la capacidad y la duracion
+# minima del tipo de pista, pero puede tener su propio precio si el centro quiere.
 class Pista(models.Model):
     numero_pista = models.AutoField(primary_key=True)
+    precio_hora = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    disponible  = models.BooleanField(default=True)
     tipo_pista = models.ForeignKey(
         TipoPista,
         on_delete=models.PROTECT,
@@ -94,7 +99,7 @@ class Pista(models.Model):
         return self.tipo_pista.capacidad_maxima
 
     def obtenerPrecioHora(self):
-        return self.tipo_pista.precio_hora
+        return self.precio_hora or self.tipo_pista.precio_hora
 
     def obtenerDuracionMinima(self):
         return self.tipo_pista.duracion_minima
@@ -112,6 +117,9 @@ class Pista(models.Model):
     def __str__(self):
         return f"Pista {self.numero_pista}"
 
+# Reserva: una pista reservada por un cliente en una fecha y horario.
+# Guarda el precio de ese momento en precio_hora para que no cambie despues
+# si el centro sube los precios (el precio queda congelado en la reserva).
 class Reserva(models.Model):
     id_reserva = models.AutoField(primary_key=True)
     cliente = models.ForeignKey(
@@ -167,6 +175,30 @@ class Reserva(models.Model):
                     "La cantidad de jugadores supera la capacidad de la pista."
                 )
 
+        # La reserva tiene que caer dentro de alguna franja de atencion
+        # del dia de la semana que corresponde a la fecha reservada.
+        if self.fecha and self.hora_inicio and self.hora_fin:
+            franjas = HorarioAtencion.objects.filter(
+                dia_semana=self.fecha.weekday()
+            )
+
+            if not franjas.exists():
+                errores["fecha"] = "El centro no abre ese dia."
+            else:
+                dentro_de_horario = False
+
+                for franja in franjas:
+                    if (
+                        self.hora_inicio >= franja.hora_apertura
+                        and self.hora_fin <= franja.hora_cierre
+                    ):
+                        dentro_de_horario = True
+
+                if not dentro_de_horario:
+                    errores["hora_inicio"] = (
+                        "La reserva tiene que estar dentro del horario de atencion."
+                    )
+
         if (
             self.pista_id
             and self.fecha
@@ -174,12 +206,14 @@ class Reserva(models.Model):
             and self.hora_fin
             and self.hora_fin > self.hora_inicio
         ):
+            # solo las reservas que realmente ocupan la pista:
+            # una reserva cancelada no bloquea el horario
             reservas = Reserva.objects.filter(
                 pista_id=self.pista_id,
                 fecha=self.fecha,
                 hora_inicio__lt=self.hora_fin,
-                hora_fin__gt=self.hora_inicio
-            )
+                hora_fin__gt=self.hora_inicio,
+            ).exclude(estado__nombre="cancelada")
 
             if self.pk:
                 reservas = reservas.exclude(pk=self.pk)
@@ -231,6 +265,7 @@ class Reserva(models.Model):
     def __str__(self):
         return f"Reserva {self.id_reserva}"
 
+# Partida: una partida jugada dentro de una reserva. Una reserva puede tener varias.
 class Partida(models.Model):
     id_partida = models.AutoField(primary_key=True)
     reserva = models.ForeignKey(
@@ -262,6 +297,15 @@ class Partida(models.Model):
         ).exists():
             raise ValidationError("El jugador ya participa en esta partida.")
 
+        # la pista de la reserva define cuantos jugadores entran
+        if (
+            self.reserva.pista.obtenerCapacidadMaxima()
+            <= self.participaciones.count()
+        ):
+            raise ValidationError(
+                "Se alcanzo la capacidad maxima de la pista."
+            )
+
         return Participacion.objects.create(
             partida=self,
             jugador=jugador
@@ -288,6 +332,7 @@ class Partida(models.Model):
     def __str__(self):
         return f"Partida {self.numero} - Reserva {self.reserva_id}"
 
+# Participacion: une un jugador con una partida. Desde aca se calcula el puntaje.
 class Participacion(models.Model):
     id_participacion = models.AutoField(primary_key=True)
     partida = models.ForeignKey(
@@ -363,6 +408,7 @@ class Participacion(models.Model):
     def __str__(self):
         return f"{self.jugador} - {self.partida}"
 
+# Lanzamiento: cada tiro del jugador, con su frame, su numero de tiro y los pinos que tumbo.
 class Lanzamiento(models.Model):
     id_lanzamiento = models.AutoField(primary_key=True)
     participacion = models.ForeignKey(
@@ -479,6 +525,7 @@ class Lanzamiento(models.Model):
             f"lanzamiento {self.numero_lanzamiento}"
         )
 
+# Producto: lo que se vende en la confiteria, comida o bebida.
 class Producto(models.Model):
     COMIDA = "comida"
     BEBIDA = "bebida"
@@ -509,6 +556,7 @@ class Producto(models.Model):
     def __str__(self):
         return self.nombre
 
+# Pedido: el pedido de productos que se hace dentro de una reserva.
 class Pedido(models.Model):
     id_pedido = models.AutoField(primary_key=True)
     reserva = models.ForeignKey(
@@ -563,6 +611,8 @@ class Pedido(models.Model):
         return f"Pedido {self.id_pedido}"
 
 
+# DetallePedido: cada producto dentro de un pedido, con la cantidad y el precio
+# del momento de la compra (ese precio tampoco se toca despues).
 class DetallePedido(models.Model):
     id_detalle = models.AutoField(primary_key=True)
     pedido = models.ForeignKey(
@@ -597,3 +647,56 @@ class DetallePedido(models.Model):
 
     def __str__(self):
         return f"{self.producto} x {self.cantidad}"
+
+# HorarioAtencion: los dias y horarios en que el centro abre.
+# Se usa para no dejar reservar un dia cerrado o fuera del horario de atencion.
+class HorarioAtencion(models.Model):
+    LUNES = 0
+    MARTES = 1
+    MIERCOLES = 2
+    JUEVES = 3
+    VIERNES = 4
+    SABADO = 5
+    DOMINGO = 6
+
+    DIAS = [
+        (LUNES, "Lunes"),
+        (MARTES, "Martes"),
+        (MIERCOLES, "Miercoles"),
+        (JUEVES, "Jueves"),
+        (VIERNES, "Viernes"),
+        (SABADO, "Sabado"),
+        (DOMINGO, "Domingo"),
+    ]
+
+    id_horario = models.AutoField(primary_key=True)
+    dia_semana = models.PositiveSmallIntegerField(choices=DIAS)
+    hora_apertura = models.TimeField()
+    hora_cierre = models.TimeField()
+
+    class Meta:
+        ordering = ["dia_semana", "hora_apertura"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["dia_semana", "hora_apertura"],
+                name="horario_unico_por_dia"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        if (
+            self.hora_apertura
+            and self.hora_cierre
+            and self.hora_cierre <= self.hora_apertura
+        ):
+            raise ValidationError({
+                "hora_cierre": "La hora de cierre debe ser posterior a la de apertura."
+            })
+
+    def __str__(self):
+        return (
+            f"{self.get_dia_semana_display()} "
+            f"{self.hora_apertura:%H:%M} a {self.hora_cierre:%H:%M}"
+        )

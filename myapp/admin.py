@@ -6,6 +6,7 @@ from .models import (
     EstadoPartida,
     EstadoPedido,
     EstadoReserva,
+    HorarioAtencion,
     Jugador,
     Lanzamiento,
     Participacion,
@@ -18,6 +19,7 @@ from .models import (
 )
 
 admin.site.register(TipoPista)
+admin.site.register(HorarioAtencion)
 admin.site.register(EstadoReserva)
 admin.site.register(EstadoPedido)
 admin.site.register(EstadoPartida)
