@@ -1,5 +1,5 @@
 from django import forms
-
+from django.core.exceptions import NON_FIELD_ERRORS
 from .models import HorarioAtencion, Pista, Reserva, TipoPista
 
 class ReservaForm(forms.ModelForm):
@@ -119,6 +119,11 @@ class TipoPistaForm(forms.ModelForm):
             "capacidad_maxima": "Capacidad máxima (jugadores)",
             "duracion_minima": "Duración mínima (horas)",
         }
+        error_messages = {
+            "nombre": {
+                "unique": "Ya existe un tipo de pista con este nombre.",
+            },
+        }
 
 
 class PistaForm(forms.ModelForm):
@@ -188,4 +193,12 @@ class HorarioAtencionForm(forms.ModelForm):
             "dia_semana": "Día de la semana",
             "hora_apertura": "Hora de apertura",
             "hora_cierre": "Hora de cierre",
+        }
+        error_messages = {
+            NON_FIELD_ERRORS: {
+                "unique_together": (
+                    "Ya existe un horario de atención con este día "
+                    "y esta hora de apertura."
+                ),
+            },
         }

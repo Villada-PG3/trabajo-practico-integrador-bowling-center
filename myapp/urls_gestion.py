@@ -45,4 +45,19 @@ urlpatterns = [
         views.PistaDeleteView.as_view(),
         name="pista_eliminar",
     ),
+    path(
+        "horarios/nuevo/",
+        views.HorarioCreateView.as_view(),
+        name="horario_crear",
+    ),
+    path(
+        "horarios/<int:pk>/editar/",
+        views.HorarioUpdateView.as_view(),
+        name="horario_editar",
+    ),
+    path(
+        "horarios/<int:pk>/eliminar/",
+        views.HorarioDeleteView.as_view(),
+        name="horario_eliminar",
+    ),
 ]

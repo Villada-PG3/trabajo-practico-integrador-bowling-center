@@ -17,7 +17,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .forms import PistaForm, ReservaForm, TipoPistaForm
+from .forms import HorarioAtencionForm, PistaForm, ReservaForm, TipoPistaForm
 from .models import (
     Cliente,
     EstadoReserva,
@@ -387,4 +387,55 @@ class PistaDeleteView(StaffRequiredMixin, DeleteView):
             return redirect("gestion:panel")
 
         messages.success(self.request, f"{nombre} eliminada.")
+        return respuesta
+
+
+class HorarioCreateView(StaffRequiredMixin, CreateView):
+    model = HorarioAtencion
+    form_class = HorarioAtencionForm
+    template_name = "myapp/gestion/form.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["titulo"] = "Nuevo horario de atención"
+        return contexto
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Horario creado: {form.instance}.")
+        return super().form_valid(form)
+
+
+class HorarioUpdateView(StaffRequiredMixin, UpdateView):
+    model = HorarioAtencion
+    form_class = HorarioAtencionForm
+    template_name = "myapp/gestion/form.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["titulo"] = f"Editar horario: {self.object}"
+        return contexto
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f"Horario actualizado: {form.instance}."
+        )
+        return super().form_valid(form)
+
+
+class HorarioDeleteView(StaffRequiredMixin, DeleteView):
+    model = HorarioAtencion
+    template_name = "myapp/gestion/confirmar_eliminar.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["entidad"] = "horario de atención"
+        return contexto
+
+    def form_valid(self, form):
+        descripcion = str(self.object)
+        respuesta = super().form_valid(form)
+        messages.success(self.request, f"Horario eliminado: {descripcion}.")
         return respuesta
