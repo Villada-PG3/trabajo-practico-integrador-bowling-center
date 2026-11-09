@@ -2,6 +2,7 @@ import calendar
 from datetime import date, time
 
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import JsonResponse
@@ -10,7 +11,14 @@ from django.views import View
 from django.views.generic import CreateView, TemplateView
 
 from .forms import ReservaForm
-from .models import Cliente, EstadoReserva, HorarioAtencion, Pista, Reserva
+from .models import (
+    Cliente,
+    EstadoReserva,
+    HorarioAtencion,
+    Pista,
+    Reserva,
+    TipoPista,
+)
 
 
 class HomeView(TemplateView):
@@ -222,3 +230,30 @@ class DisponibilidadView(View):
             return JsonResponse({"error": "mes o anio fuera de rango"}, status=400)
 
         return JsonResponse(calcular_disponibilidad(anio, mes))
+
+
+class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """
+    Protege las vistas del panel de gestion.
+
+    - Sin sesion iniciada: redirige al login (LoginRequiredMixin).
+    - Con sesion pero sin ser staff: responde 403 (UserPassesTestMixin).
+    """
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+class PanelView(StaffRequiredMixin, TemplateView):
+    """Pagina principal de /gestion/: lista tipos de pista, pistas y horarios."""
+
+    template_name = "myapp/gestion/panel.html"
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["tipos_pista"] = TipoPista.objects.order_by("nombre")
+        contexto["pistas"] = Pista.objects.select_related(
+            "tipo_pista"
+        ).order_by("numero_pista")
+        contexto["horarios"] = HorarioAtencion.objects.all()
+        return contexto

@@ -1,5 +1,4 @@
 {% extends 'myapp/base.html' %}
-{% load static %}
 
 {% block title %}Acceso Staff — Pins & Co.{% endblock %}
 
@@ -16,14 +15,13 @@
           <p class="small text-muted">Acceso exclusivo para el equipo de Pins & Co.</p>
         </div>
 
-        {% if messages %}
-          {% for message in messages %}
-            <div class="alert alert-danger small">{{ message }}</div>
-          {% endfor %}
+        {% if form.errors %}
+          <div class="alert alert-danger small">Usuario o contraseña incorrectos.</div>
         {% endif %}
 
         <form method="post">
           {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
           <div class="mb-3">
             <label class="form-label small fw-semibold">Usuario</label>
             <input type="text" name="username" class="form-control" required autofocus>
@@ -38,7 +36,7 @@
         </form>
 
         <div class="text-center mt-4">
-          <a href="{% url 'home' %}" class="small text-muted text-decoration-none">
+          <a href="{% url 'myapp:home' %}" class="small text-muted text-decoration-none">
             ← Volver al sitio
           </a>
         </div>

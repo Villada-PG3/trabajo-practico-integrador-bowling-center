@@ -22,6 +22,11 @@
 
             <!-- Right -->
       <div class="d-flex align-items-center gap-3">
+        {% if user.is_authenticated and user.is_staff %}
+          <a href="{% url 'gestion:panel' %}" class="btn btn-sm btn-light px-3 py-1">Panel</a>
+        {% else %}
+          <a href="{% url 'gestion:login' %}" class="btn btn-sm btn-light px-3 py-1 d-none d-md-inline-flex">Staff</a>
+        {% endif %}
         <a class="btn btn-brand-coral px-4 py-2 d-none d-sm-inline-flex align-items-center" href="{% url 'myapp:reserva' %}">
           Reservar Pista
         </a>
