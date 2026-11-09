@@ -33,74 +33,8 @@
 
   {% include 'bowling_center/includes/footer.html' %}
 
-  <!-- Toast Feedback -->
-  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
-    <div id="bookingToast" class="toast align-items-center text-bg-light border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body d-flex align-items-center gap-3 p-3">
-          <i class="bi bi-check-circle-fill fs-3" style="color: var(--brand-secondary);"></i>
-          <div>
-            <div class="fw-bold text-dark" id="toast-title">Pista seleccionada</div>
-            <div class="small text-muted" id="toast-body">Te dirigimos al formulario de horario.</div>
-          </div>
-        </div>
-        <button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-  </div>
-
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Scripts de interacción -->
-  <script>
-    function showNotification(title, body) {
-      document.getElementById('toast-title').textContent = title;
-      document.getElementById('toast-body').textContent = body;
-      const toastEl = document.getElementById('bookingToast');
-      const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
-      toast.show();
-    }
-
-    function selectLaneType(type) {
-      showNotification('Modalidad seleccionada', 'Has escogido ' + type + '. Elige tu bahía abajo.');
-      const selectorGrid = document.getElementById('lane-selector-grid');
-      if (selectorGrid) {
-        selectorGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-
-    function toggleLane(button, number) {
-      const allButtons = document.querySelectorAll('.lane-pill-btn');
-      allButtons.forEach(btn => {
-        if (!btn.disabled && !btn.classList.contains('opacity-75')) {
-          btn.classList.remove('active');
-          const badge = btn.querySelector('.lane-badge');
-          if (badge && number < 7) badge.style.color = 'var(--brand-outline)';
-          const state = btn.querySelector('.lane-state');
-          if (state) {
-            state.textContent = 'Libre';
-            state.style.color = 'var(--brand-secondary)';
-          }
-        }
-      });
-      button.classList.add('active');
-      const activeState = button.querySelector('.lane-state');
-      if (activeState) {
-        activeState.textContent = 'Elegida';
-        activeState.style.color = '#ffffff';
-      }
-      const feedback = document.getElementById('selected-lane-feedback');
-      if (feedback) {
-        const suiteTag = number >= 7 ? ' (Suite Privada)' : (number === 3 || number === 4 ? ' (VIP Lounge)' : ' (Pista Clásica)');
-        feedback.innerHTML = 'Pista seleccionada: <strong class="text-dark">Pista 0' + number + suiteTag + '</strong> — Turno disponible ahora';
-      }
-    }
-
-    function triggerReservationModal() {
-      showNotification('Accediendo a reservas', 'Cargando disponibilidad para esta semana...');
-    }
-  </script>
 
   {% block extra_js %}{% endblock %}
 </body>
