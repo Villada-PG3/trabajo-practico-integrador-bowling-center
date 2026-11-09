@@ -5,12 +5,19 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import ProtectedError
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import CreateView, TemplateView
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    TemplateView,
+    UpdateView,
+)
 
-from .forms import ReservaForm
+from .forms import ReservaForm, TipoPistaForm
 from .models import (
     Cliente,
     EstadoReserva,
@@ -257,3 +264,64 @@ class PanelView(StaffRequiredMixin, TemplateView):
         ).order_by("numero_pista")
         contexto["horarios"] = HorarioAtencion.objects.all()
         return contexto
+
+
+class TipoPistaCreateView(StaffRequiredMixin, CreateView):
+    model = TipoPista
+    form_class = TipoPistaForm
+    template_name = "myapp/gestion/form.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["titulo"] = "Nuevo tipo de pista"
+        return contexto
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f'Tipo de pista "{form.instance.nombre}" creado.'
+        )
+        return super().form_valid(form)
+
+
+class TipoPistaUpdateView(StaffRequiredMixin, UpdateView):
+    model = TipoPista
+    form_class = TipoPistaForm
+    template_name = "myapp/gestion/form.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["titulo"] = f"Editar tipo de pista: {self.object.nombre}"
+        return contexto
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f'Tipo de pista "{form.instance.nombre}" actualizado.'
+        )
+        return super().form_valid(form)
+
+
+class TipoPistaDeleteView(StaffRequiredMixin, DeleteView):
+    model = TipoPista
+    template_name = "myapp/gestion/confirmar_eliminar.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["entidad"] = "tipo de pista"
+        return contexto
+
+    def form_valid(self, form):
+        nombre = self.object.nombre
+        try:
+            respuesta = super().form_valid(form)
+        except ProtectedError:
+            messages.error(
+                self.request,
+                f'No se puede eliminar "{nombre}": tiene pistas asociadas.',
+            )
+            return redirect("gestion:panel")
+
+        messages.success(self.request, f'Tipo de pista "{nombre}" eliminado.')
+        return respuesta

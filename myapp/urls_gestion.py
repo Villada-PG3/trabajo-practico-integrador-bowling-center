@@ -15,4 +15,19 @@ urlpatterns = [
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path(
+        "tipos-pista/nuevo/",
+        views.TipoPistaCreateView.as_view(),
+        name="tipo_pista_crear",
+    ),
+    path(
+        "tipos-pista/<int:pk>/editar/",
+        views.TipoPistaUpdateView.as_view(),
+        name="tipo_pista_editar",
+    ),
+    path(
+        "tipos-pista/<int:pk>/eliminar/",
+        views.TipoPistaDeleteView.as_view(),
+        name="tipo_pista_eliminar",
+    ),
 ]
