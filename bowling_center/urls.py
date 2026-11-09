@@ -96,6 +96,26 @@ urlpatterns = [
         views.EliminarProductoView.as_view(),
         name="eliminar_producto",
     ),
+        path(
+        "gestion/clientes/",
+        views.GestionClientesView.as_view(),
+        name="gestion_clientes",
+    ),
+    path(
+        "gestion/clientes/nuevo/",
+        views.CrearClienteView.as_view(),
+        name="crear_cliente",
+    ),
+    path(
+        "gestion/clientes/<int:pk>/editar/",
+        views.EditarClienteView.as_view(),
+        name="editar_cliente",
+    ),
+    path(
+        "gestion/clientes/<int:pk>/eliminar/",
+        views.EliminarClienteView.as_view(),
+        name="eliminar_cliente",
+    ),
     path(
         "gestion/operacion/",
         views.OperacionMapaView.as_view(),
