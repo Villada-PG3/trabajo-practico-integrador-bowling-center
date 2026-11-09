@@ -85,7 +85,12 @@
     <!-- PISTAS -->
     <div class="col-lg-7">
       <div class="bg-white card-rounded p-4 shadow-sm h-100">
-        <h2 class="font-heading fw-bold fs-5 mb-4">Pistas</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="font-heading fw-bold fs-5 mb-0">Pistas</h2>
+          <a href="{% url 'gestion:pista_crear' %}" class="btn btn-brand-primary btn-sm px-3">
+            <i class="bi bi-plus-lg me-1"></i> Nueva pista
+          </a>
+        </div>
 
         {% if pistas %}
           <div class="table-responsive">
@@ -96,6 +101,7 @@
                   <th>Tipo</th>
                   <th>Precio / hora</th>
                   <th>Estado</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -103,13 +109,24 @@
                 <tr>
                   <td class="fw-bold">{{ p.numero_pista|stringformat:"02d" }}</td>
                   <td><span class="badge bg-light text-dark">{{ p.tipo_pista.nombre }}</span></td>
-                  <td>$ {{ p.obtenerPrecioHora }}</td>
+                  <td>
+                    $ {{ p.obtenerPrecioHora }}
+                    {% if p.precio_hora %}<small class="text-muted">(propio)</small>{% endif %}
+                  </td>
                   <td>
                     {% if p.disponible %}
                       <span class="badge" style="background:var(--brand-secondary-bg);color:var(--brand-secondary);">Disponible</span>
                     {% else %}
                       <span class="badge bg-secondary">No disponible</span>
                     {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'gestion:pista_editar' p.pk %}" class="btn btn-sm btn-light">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'gestion:pista_eliminar' p.pk %}" class="btn btn-sm btn-light text-danger">
+                      <i class="bi bi-trash"></i>
+                    </a>
                   </td>
                 </tr>
                 {% endfor %}

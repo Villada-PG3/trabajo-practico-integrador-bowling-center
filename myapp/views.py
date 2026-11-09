@@ -17,7 +17,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .forms import ReservaForm, TipoPistaForm
+from .forms import PistaForm, ReservaForm, TipoPistaForm
 from .models import (
     Cliente,
     EstadoReserva,
@@ -324,4 +324,67 @@ class TipoPistaDeleteView(StaffRequiredMixin, DeleteView):
             return redirect("gestion:panel")
 
         messages.success(self.request, f'Tipo de pista "{nombre}" eliminado.')
+        return respuesta
+
+
+class PistaCreateView(StaffRequiredMixin, CreateView):
+    model = Pista
+    form_class = PistaForm
+    template_name = "myapp/gestion/form.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["titulo"] = "Nueva pista"
+        return contexto
+
+    def form_valid(self, form):
+        respuesta = super().form_valid(form)
+        messages.success(
+            self.request, f"Pista {self.object.numero_pista} creada."
+        )
+        return respuesta
+
+
+class PistaUpdateView(StaffRequiredMixin, UpdateView):
+    model = Pista
+    form_class = PistaForm
+    template_name = "myapp/gestion/form.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["titulo"] = f"Editar pista {self.object.numero_pista}"
+        return contexto
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f"Pista {self.object.numero_pista} actualizada."
+        )
+        return super().form_valid(form)
+
+
+class PistaDeleteView(StaffRequiredMixin, DeleteView):
+    model = Pista
+    template_name = "myapp/gestion/confirmar_eliminar.html"
+    success_url = reverse_lazy("gestion:panel")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["entidad"] = "pista"
+        return contexto
+
+    def form_valid(self, form):
+        nombre = str(self.object)
+        try:
+            respuesta = super().form_valid(form)
+        except ProtectedError:
+            messages.error(
+                self.request,
+                f"No se puede eliminar {nombre}: tiene reservas asociadas. "
+                "Si ya no se usa, marcala como no disponible.",
+            )
+            return redirect("gestion:panel")
+
+        messages.success(self.request, f"{nombre} eliminada.")
         return respuesta

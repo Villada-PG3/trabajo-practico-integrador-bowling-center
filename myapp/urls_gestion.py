@@ -30,4 +30,19 @@ urlpatterns = [
         views.TipoPistaDeleteView.as_view(),
         name="tipo_pista_eliminar",
     ),
+    path(
+        "pistas/nueva/",
+        views.PistaCreateView.as_view(),
+        name="pista_crear",
+    ),
+    path(
+        "pistas/<int:pk>/editar/",
+        views.PistaUpdateView.as_view(),
+        name="pista_editar",
+    ),
+    path(
+        "pistas/<int:pk>/eliminar/",
+        views.PistaDeleteView.as_view(),
+        name="pista_eliminar",
+    ),
 ]
