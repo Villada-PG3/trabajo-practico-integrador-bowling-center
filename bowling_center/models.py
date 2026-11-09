@@ -473,47 +473,55 @@ class Participacion(models.Model):
         return marcas
 
     def calcularPuntajeTotal(self):
+        # 1) Traer todos los lanzamientos del jugador, ordenados por frame.
         lanzamientos = self.lanzamientos.order_by("numero_frame", "numero_lanzamiento")
-        tiros = [lanz.pinos_derribados for lanz in lanzamientos]
-        puntaje_total = 0
-        posicion = 0
 
-        for _numero_frame in range(9):
+        # 2) Armar una lista simple con los pinos de cada lanzamiento.
+        tiros = []
+        for lanzamiento in lanzamientos:
+            tiros.append(lanzamiento.pinos_derribados)
+
+        # 3) Recorrer la partida frame por frame (son 10 frames).
+        puntaje_total = 0
+        posicion = 0  # en que tiro de la lista vamos
+
+        for numero_frame in range(10):
+            # Si ya no hay mas tiros, terminamos.
             if posicion >= len(tiros):
                 break
 
             primer_tiro = tiros[posicion]
 
+            # CASO STRIKE: 10 pinos en el primer tiro del frame.
             if primer_tiro == 10:
+                # Para valer, el strike necesita los 2 tiros siguientes.
+                # Si la partida esta en curso y todavia no los hay, se corta.
                 if posicion + 2 >= len(tiros):
                     break
 
                 puntaje_total += 10 + tiros[posicion + 1] + tiros[posicion + 2]
-                posicion += 1
+                posicion += 1  # el strike ocupa un solo tiro del frame
                 continue
 
+            # Sin segundo tiro el frame esta a medio jugar: no se suma nada.
             if posicion + 1 >= len(tiros):
                 break
 
             segundo_tiro = tiros[posicion + 1]
 
+            # CASO SPARE: 10 pinos sumando los 2 tiros del frame.
             if primer_tiro + segundo_tiro == 10:
+                # El spare vale 10 + el proximo tiro; sin ese tiro no vale.
                 if posicion + 2 >= len(tiros):
                     break
 
                 puntaje_total += 10 + tiros[posicion + 2]
-                posicion += 2
+                posicion += 2  # el spare ocupa los 2 tiros del frame
                 continue
 
+            # CASO FRAME COMUN: se suman los pinos de los 2 tiros.
             puntaje_total += primer_tiro + segundo_tiro
             posicion += 2
-
-        if self.siguienteTiro() is None:
-            puntaje_total += sum(
-                lanzamiento.pinos_derribados
-                for lanzamiento in lanzamientos
-                if lanzamiento.numero_frame == 10
-            )
 
         return puntaje_total
 

@@ -1,8 +1,6 @@
 import calendar
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from io import BytesIO
-from xml.sax.saxutils import escape
 
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -11,11 +9,10 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import ProtectedError
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.utils.http import urlencode
 from django.views import View
 from django.views.generic import (
     CreateView,
@@ -25,18 +22,6 @@ from django.views.generic import (
     ListView,
     TemplateView,
     UpdateView,
-)
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_RIGHT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import mm
-from reportlab.platypus import (
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
 )
 
 from .forms import (
@@ -143,7 +128,7 @@ class GestionPistasView(StaffRequiredMixin, ListView):
     model = Pista
     template_name = "bowling_center/gestion_pistas.html"
     context_object_name = "pistas"
-    queryset = Pista.objects.select_related("tipo_pista").order_by("numero_pista")
+    queryset = Pista.objects.order_by("numero_pista")
 
 
 class GestionHorariosView(StaffRequiredMixin, ListView):
@@ -354,13 +339,12 @@ def obtener_estado_pistas(ahora=None):
     reservas = (
         Reserva.objects.filter(fecha__in=fechas)
         .exclude(estado__nombre="cancelada")
-        .select_related("estado", "cliente", "pista", "pista__tipo_pista")
         .order_by("fecha", "hora_inicio")
     )
     for reserva in reservas:
         reservas_por_pista.setdefault(reserva.pista_id, []).append(reserva)
 
-    pistas = Pista.objects.select_related("tipo_pista").order_by("numero_pista")
+    pistas = Pista.objects.order_by("numero_pista")
     resultado = []
 
     for pista in pistas:
@@ -457,8 +441,6 @@ class OperacionReservasView(StaffRequiredMixin, TemplateView):
         cliente = self.request.GET.get("cliente", "").strip()
         reservas = (
             Reserva.objects.filter(fecha=fecha)
-            .select_related("estado", "cliente", "pista", "pista__tipo_pista")
-            .prefetch_related("pedidos__estado", "pedidos__detalles__producto")
             .order_by("hora_inicio", "pista__numero_pista")
         )
         if cliente:
@@ -498,7 +480,7 @@ class OperacionReservasView(StaffRequiredMixin, TemplateView):
 class OperacionReservaActionView(StaffRequiredMixin, View):
     def get_reserva(self, codigo):
         return get_object_or_404(
-            Reserva.objects.select_related("estado", "pista", "cliente"),
+            Reserva.objects.all(),
             codigo=codigo.upper(),
         )
 
@@ -602,20 +584,21 @@ class CambiarDisponibilidadPistaView(StaffRequiredMixin, View):
 class AgregarPedidoOperacionView(StaffRequiredMixin, View):
     def post(self, request, codigo):
         reserva = get_object_or_404(
-            Reserva.objects.select_related("estado"),
+            Reserva.objects.all(),
             codigo=codigo.upper(),
         )
         fecha = request.POST.get("fecha", "")
         cliente = request.POST.get("cliente", "")
         form = PedidoOperacionForm(request.POST)
         volver = reverse("bowling_center:operacion_reservas")
-        parametros = {}
+        parametros = []
+
         if fecha:
-            parametros["fecha"] = fecha
+            parametros.append(f"fecha={fecha}")
         if cliente:
-            parametros["cliente"] = cliente
+            parametros.append(f"cliente={cliente}")
         if parametros:
-            volver = f"{volver}?{urlencode(parametros)}"
+            volver = volver + "?" + "&".join(parametros)
 
         if not form.is_valid():
             messages.error(request, "Elegí un producto y una cantidad válida.")
@@ -655,8 +638,6 @@ class CajaReservaView(StaffRequiredMixin, DetailView):
         return (
             super()
             .get_queryset()
-            .select_related("cliente", "pista", "pista__tipo_pista", "estado")
-            .prefetch_related("pedidos__estado", "pedidos__detalles__producto")
         )
 
 
@@ -733,21 +714,18 @@ class ReservaView(CreateView):
 
     def url_paso(self, paso, pista, anio, mes, dia=None, hora="", duracion=None):
         # Arma el enlace de un paso llevando lo que ya se eligio.
-        datos = {"paso": paso}
+        url = f"{reverse('bowling_center:reserva')}?paso={paso}"
 
         if pista is not None:
-            datos["pista"] = pista.numero_pista
+            url += f"&pista={pista.numero_pista}"
         if dia is not None:
-            datos["dia"] = dia.isoformat()
+            url += f"&dia={dia.isoformat()}"
         if hora:
-            datos["hora"] = hora
+            url += f"&hora={hora}"
         if duracion:
-            datos["duracion"] = duracion
+            url += f"&duracion={duracion}"
 
-        datos["anio"] = anio
-        datos["mes"] = mes
-
-        return reverse("bowling_center:reserva") + "?" + urlencode(datos)
+        return url + f"&anio={anio}&mes={mes}"
 
     def calcular_duracion(self, pista, hora):
         # Si el cliente no eligio duracion se ofrece la minima de la pista.
@@ -1065,16 +1043,10 @@ def armar_semanas(anio, mes, dias, dia_elegido, numero_pista):
                     "estado": info["estado"],
                     "elegido": fecha == dia_elegido,
                     "titulo": f"{con_lugar} horarios con lugar",
-                    "url": reverse("bowling_center:reserva")
-                    + "?"
-                    + urlencode(
-                        {
-                            "paso": 2,
-                            "pista": numero_pista,
-                            "anio": anio,
-                            "mes": mes,
-                            "dia": fecha.isoformat(),
-                        }
+                    "url": (
+                        f"{reverse('bowling_center:reserva')}?paso=2"
+                        f"&pista={numero_pista}&anio={anio}&mes={mes}"
+                        f"&dia={fecha.isoformat()}"
                     ),
                 }
             )
@@ -1147,12 +1119,22 @@ def calcular_disponibilidad(anio, mes):
             dias[clave] = {"estado": "pasado", "slots": []}
             continue
 
-        franjas_del_dia = [f for f in franjas if f.dia_semana == fecha.weekday()]
+        franjas_del_dia = []
+
+        for franja in franjas:
+            if franja.dia_semana == fecha.weekday():
+                franjas_del_dia.append(franja)
+
         if not franjas_del_dia or total_pistas == 0:
             dias[clave] = {"estado": "cerrado", "slots": []}
             continue
 
-        reservas_del_dia = [r for r in reservas if r["fecha"] == fecha]
+        reservas_del_dia = []
+
+        for reserva in reservas:
+            if reserva["fecha"] == fecha:
+                reservas_del_dia.append(reserva)
+
         slots = []
 
         for franja in franjas_del_dia:
@@ -1231,375 +1213,6 @@ class DetalleReservaView(DetailView):
         contexto["productos"] = Producto.objects.all()
         contexto["pedidos"] = self.object.pedidos.all()
         return contexto
-
-
-class ComprobanteReservaPdfView(View):
-    def get(self, request, codigo):
-        reserva = get_object_or_404(
-            Reserva.objects.select_related(
-                "cliente",
-                "pista",
-                "pista__tipo_pista",
-                "estado",
-            ).prefetch_related(
-                "pedidos__estado",
-                "pedidos__detalles__producto",
-            ),
-            codigo=codigo.upper(),
-        )
-        return self.generar_comprobante(reserva)
-
-    def generar_comprobante(self, reserva):
-        archivo = BytesIO()
-        documento = SimpleDocTemplate(
-            archivo,
-            pagesize=A4,
-            rightMargin=18 * mm,
-            leftMargin=18 * mm,
-            topMargin=18 * mm,
-            bottomMargin=20 * mm,
-            title=f"Comprobante de reserva {reserva.codigo}",
-            author="Pins & Co.",
-        )
-        estilos_base = getSampleStyleSheet()
-        estilos = {
-            "titulo": ParagraphStyle(
-                "ComprobanteTitulo",
-                parent=estilos_base["Title"],
-                fontName="Helvetica-Bold",
-                fontSize=19,
-                leading=23,
-                textColor=colors.HexColor("#9a442d"),
-                alignment=TA_LEFT,
-            ),
-            "seccion": ParagraphStyle(
-                "ComprobanteSeccion",
-                parent=estilos_base["Heading2"],
-                fontName="Helvetica-Bold",
-                fontSize=11,
-                leading=14,
-                textColor=colors.HexColor("#386753"),
-                spaceBefore=5 * mm,
-                spaceAfter=2 * mm,
-            ),
-            "etiqueta": ParagraphStyle(
-                "ComprobanteEtiqueta",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica-Bold",
-                fontSize=7,
-                leading=9,
-                textColor=colors.HexColor("#88726d"),
-            ),
-            "etiqueta_derecha": ParagraphStyle(
-                "ComprobanteEtiquetaDerecha",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica-Bold",
-                fontSize=7,
-                leading=9,
-                alignment=TA_RIGHT,
-                textColor=colors.HexColor("#88726d"),
-            ),
-            "texto": ParagraphStyle(
-                "ComprobanteTexto",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica",
-                fontSize=9,
-                leading=13,
-                textColor=colors.HexColor("#181a2e"),
-            ),
-            "derecha": ParagraphStyle(
-                "ComprobanteDerecha",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica-Bold",
-                fontSize=9,
-                leading=13,
-                alignment=TA_RIGHT,
-                textColor=colors.HexColor("#181a2e"),
-            ),
-            "total": ParagraphStyle(
-                "ComprobanteTotal",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica-Bold",
-                fontSize=14,
-                leading=18,
-                alignment=TA_RIGHT,
-                textColor=colors.HexColor("#9a442d"),
-            ),
-            "marca": ParagraphStyle(
-                "ComprobanteMarca",
-                parent=estilos_base["Heading1"],
-                fontName="Helvetica-Bold",
-                fontSize=19,
-                leading=23,
-                textColor=colors.HexColor("#9a442d"),
-                spaceAfter=1 * mm,
-            ),
-            "subtitulo": ParagraphStyle(
-                "ComprobanteSubtitulo",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica",
-                fontSize=8,
-                leading=11,
-                textColor=colors.HexColor("#55423e"),
-            ),
-            "codigo": ParagraphStyle(
-                "ComprobanteCodigo",
-                parent=estilos_base["BodyText"],
-                fontName="Helvetica-Bold",
-                fontSize=13,
-                leading=16,
-                alignment=TA_RIGHT,
-                textColor=colors.HexColor("#1f1f2e"),
-            ),
-        }
-
-        def texto(valor, estilo="texto"):
-            return Paragraph(escape(str(valor)), estilos[estilo])
-
-        def etiqueta(valor):
-            return texto(valor.upper(), "etiqueta")
-
-        def moneda(valor):
-            return (
-                f"$ {Decimal(valor):,.2f}"
-                .replace(",", "_")
-                .replace(".", ",")
-                .replace("_", ".")
-            )
-
-        estados_reserva = {
-            "pendiente_a_pago": "Pendiente de pago",
-            "pagada": "Pagada",
-            "en_curso": "En curso",
-            "finalizada": "Finalizada",
-            "cancelada": "Cancelada",
-        }
-        estado_reserva = estados_reserva.get(
-            reserva.estado.nombre,
-            reserva.estado.nombre.replace("_", " ").capitalize(),
-        )
-
-        encabezado = Table(
-            [
-                [
-                    Paragraph("Pins &amp; Co.", estilos["marca"]),
-                    texto("COMPROBANTE DE RESERVA", "etiqueta_derecha"),
-                ],
-                [
-                    texto("Experiencias para compartir", "subtitulo"),
-                    texto(f"RESERVA {reserva.codigo}", "codigo"),
-                ],
-                [
-                    texto(f"Estado: {estado_reserva}", "subtitulo"),
-                    texto(
-                        f"Emitido el {timezone.localdate():%d/%m/%Y}",
-                        "derecha",
-                    ),
-                ],
-            ],
-            colWidths=[documento.width * 0.55, documento.width * 0.45],
-        )
-        encabezado.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f4f2ff")),
-                    ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e6e6ff")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 12),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-                    ("TOPPADDING", (0, 0), (-1, -1), 7),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-                ]
-            )
-        )
-        story = [
-            encabezado,
-            Spacer(1, 4 * mm),
-            Paragraph("Datos de la reserva", estilos["seccion"]),
-        ]
-
-        informacion = [
-            [
-                etiqueta("Titular"),
-                texto(reserva.cliente.nombre),
-                etiqueta("Estado"),
-                texto(estado_reserva),
-            ],
-            [
-                etiqueta("Email"),
-                texto(reserva.cliente.email),
-                etiqueta("Fecha"),
-                texto(reserva.fecha.strftime("%d/%m/%Y")),
-            ],
-            [
-                etiqueta("Teléfono"),
-                texto(reserva.cliente.telefono),
-                etiqueta("Horario"),
-                texto(
-                    f"{reserva.hora_inicio:%H:%M} a "
-                    f"{reserva.hora_fin:%H:%M} hs"
-                ),
-            ],
-            [
-                etiqueta("Pista"),
-                texto(
-                    f"Pista {reserva.pista.numero_pista} — "
-                    f"{reserva.pista.tipo_pista.nombre}"
-                ),
-                etiqueta("Jugadores"),
-                texto(reserva.cantidad_jugadores),
-            ],
-            [
-                etiqueta("Tarifa congelada"),
-                texto(f"{moneda(reserva.precio_hora)} / hora"),
-                etiqueta("Duración"),
-                texto(f"{reserva.calcularDuracion() / 60:g} horas"),
-            ],
-        ]
-        informacion_tabla = Table(
-            informacion,
-            colWidths=[
-                documento.width * 0.18,
-                documento.width * 0.32,
-                documento.width * 0.14,
-                documento.width * 0.36,
-            ],
-        )
-        informacion_tabla.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#fbf8ff")),
-                    ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#fbf8ff")),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e6e6ff")),
-                    ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#e6e6ff")),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-                    ("TOPPADDING", (0, 0), (-1, -1), 8),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-                ]
-            )
-        )
-        story.extend(
-            [
-                informacion_tabla,
-                Paragraph("Detalle de consumos", estilos["seccion"]),
-            ]
-        )
-
-        filas_consumos = [
-            [
-                texto("Pedido / producto"),
-                texto("Cant."),
-                texto("Precio unitario"),
-                texto("Subtotal", "derecha"),
-            ]
-        ]
-        for pedido in reserva.pedidos.all():
-            for detalle in pedido.detalles.all():
-                filas_consumos.append(
-                    [
-                        texto(
-                            f"Pedido #{pedido.pk} · {detalle.producto.nombre}"
-                        ),
-                        texto(detalle.cantidad),
-                        texto(moneda(detalle.precio_unitario)),
-                        texto(moneda(detalle.calcularSubtotal()), "derecha"),
-                    ]
-                )
-
-        if len(filas_consumos) == 1:
-            filas_consumos.append(
-                [texto("Sin consumos"), texto("—"), texto("—"), texto(moneda(0), "derecha")]
-            )
-
-        consumos_tabla = Table(
-            filas_consumos,
-            repeatRows=1,
-            colWidths=[
-                documento.width * 0.50,
-                documento.width * 0.12,
-                documento.width * 0.19,
-                documento.width * 0.19,
-            ],
-        )
-        consumos_tabla.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edecff")),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d8d6e8")),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]
-            )
-        )
-        story.extend(
-            [
-                consumos_tabla,
-                Spacer(1, 5 * mm),
-            ]
-        )
-
-        costos = Table(
-            [
-                [texto("Alquiler de pista"), texto(moneda(reserva.calcularCostoPista()), "derecha")],
-                [texto("Pedidos de cafetería"), texto(moneda(reserva.calcularCostoPedidos()), "derecha")],
-                [
-                    texto("TOTAL"),
-                    texto(moneda(reserva.calcularCostoTotal()), "total"),
-                ],
-            ],
-            colWidths=[documento.width * 0.62, documento.width * 0.38],
-        )
-        costos.setStyle(
-            TableStyle(
-                [
-                    ("LINEABOVE", (0, 2), (-1, 2), 1, colors.HexColor("#9a442d")),
-                    ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#f4f2ff")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ]
-            )
-        )
-        story.extend(
-            [
-                costos,
-                Spacer(1, 8 * mm),
-                Paragraph(
-                    "Comprobante generado por Pins &amp; Co. · "
-                    f"Reserva {escape(reserva.codigo)}. "
-                    "Los datos y consumos reflejan el estado al momento de la descarga.",
-                    estilos_base["Italic"],
-                ),
-            ]
-        )
-
-        def pie_de_pagina(canvas, _documento):
-            canvas.saveState()
-            canvas.setFont("Helvetica", 8)
-            canvas.setFillColor(colors.HexColor("#88726d"))
-            canvas.drawString(18 * mm, 12 * mm, f"Reserva {reserva.codigo}")
-            canvas.drawRightString(
-                A4[0] - 18 * mm,
-                12 * mm,
-                f"Página {canvas.getPageNumber()}",
-            )
-            canvas.restoreState()
-
-        documento.build(story, onFirstPage=pie_de_pagina, onLaterPages=pie_de_pagina)
-        respuesta = HttpResponse(archivo.getvalue(), content_type="application/pdf")
-        respuesta["Content-Disposition"] = (
-            f'attachment; filename="comprobante-reserva-{reserva.codigo}.pdf"'
-        )
-        return respuesta
 
 
 class CancelarReservaView(View):

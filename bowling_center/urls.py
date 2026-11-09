@@ -158,11 +158,6 @@ urlpatterns = [
         name="detalle_reserva",
     ),
     path(
-        "mi-reserva/<str:codigo>/comprobante.pdf",
-        views.ComprobanteReservaPdfView.as_view(),
-        name="comprobante_reserva",
-    ),
-    path(
         "mi-reserva/<str:codigo>/cancelar/",
         views.CancelarReservaView.as_view(),
         name="cancelar_reserva",
