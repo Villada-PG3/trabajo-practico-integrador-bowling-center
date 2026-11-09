@@ -34,13 +34,13 @@ bowling-center/
 │   ├── urls.py
 │   └── wsgi.py
 │
-├── myapp/
+├── bowling_center/
 │   ├── migrations/
 │   ├── __init__.py
 │   ├── admin.py
 │   ├── apps.py
 │   ├── models.py
-│   ├── test.py
+│   ├── tests.py
 │   ├── views.py
 │
 ├── docs/
@@ -92,6 +92,16 @@ bowling-center/
    ```bash
    python manage.py runserver
    ```
+
+## Panel para trabajadores
+
+El panel interno está disponible desde la opción **Trabajadores** de la página principal, o directamente en `/gestion/`. Desde allí se administran los tipos de pista, las pistas, los horarios y el catálogo de comidas y bebidas; también se accede al mapa de operación, a la agenda por fecha y cliente y a la caja. En la agenda se pueden registrar llegadas y agregar consumos a las reservas. Se requiere una cuenta de personal (`is_staff`); para crear una durante el desarrollo:
+
+```bash
+python manage.py createsuperuser
+```
+
+El inicio de sesión propio del panel está en `/gestion/login/`. El admin de Django se conserva para cargar otros datos de prueba y depurar, pero no se usa como pantalla de gestión u operación del centro.
 
 ## Integrantes del equipo
 

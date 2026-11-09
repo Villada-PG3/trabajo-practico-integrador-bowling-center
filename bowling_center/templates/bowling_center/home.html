@@ -1,4 +1,4 @@
-{% extends 'myapp/base.html' %}
+{% extends 'bowling_center/base.html' %}
 {% load static %}
 
 {% block title %}Pins & Co. — Bowling & Social Club{% endblock %}
@@ -22,7 +22,7 @@
           Pistas de arce pulidas con esmero, cócteles de autor en copa fría y una atmósfera cálida diseñada para conversar sin prisa entre tirada y tirada.
         </p>
         <div class="d-flex flex-column flex-sm-row gap-3">
-          <a class="btn btn-brand-primary d-inline-flex align-items-center justify-content-center gap-2 shadow-sm" href="{% url 'myapp:reserva' %}">
+          <a class="btn btn-brand-primary d-inline-flex align-items-center justify-content-center gap-2 shadow-sm" href="{% url 'bowling_center:reserva' %}">
             <span>Reservar mi pista</span>
             <i class="bi bi-arrow-right"></i>
           </a>
@@ -52,8 +52,8 @@
       <!-- Hero Image -->
       <div class="col-lg-6">
         <div class="position-relative overflow-hidden card-rounded shadow-lg" style="height: 480px; background-color: var(--brand-surface-container);">
-          <img alt="Interior Pins & Co" class="w-100 h-100 object-fit-cover"
-               src="https://lh3.googleusercontent.com/aida-public/AB6AXuDg4P-Q6t6ibVItQikKah5IZiPG8GPm0lRXetz2MliLYibkym2TfyJQmsSOB-AN5Rbtksa1HRdeA7M6uJ1h_GxnLgnyHe_Z_U8LJpLBDw_FJxhRd3svnYPIBJIMC4AXFyX-PLL2eWYcw_bmgbKAb-gC6NotkoBNrnlQVOY3LXWEhH8j5Fvg6XJnG-mDS2eCs8c-DPybNEZChKaU5xYbMdaSOOg1I7uXWRqTEeztDwrk0EIe1zMMRqZWw"/>
+          <img alt="Interior de Pins & Co. y sus pistas de bowling" class="w-100 h-100 object-fit-cover"
+               src="{% static 'bowling_center/images/hero-bowling.jpg' %}"/>
           <div class="position-absolute bottom-0 start-0 end-0 p-3 p-sm-4"
                style="background: linear-gradient(180deg, transparent 0%, rgba(24, 26, 46, 0.45) 100%);">
             <div class="glass-card p-3 shadow d-flex align-items-center justify-content-between">
@@ -108,8 +108,8 @@
             </p>
           </div>
           <div class="rounded-4 overflow-hidden position-relative" style="height: 240px;">
-            <img alt="Pistas de arce" class="w-100 h-100 object-fit-cover"
-                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPJ7tn5_z0fMq69VKvL4kvWWXzkB3IkKj2J04B4H5bkP6ZA7nDKne_UqQ-SKUY7Nc8zaRvDhWVZFtmrW2F9gS8OhuNs7ahgMoU9IMxQFPxJHsLpvSpdbS9bA7Vmh9X1m39VyLnfp4ADyNG3Xf3XoEUQDM94Smz4oB0Z3ZnXX28IV57Hi5JKpqXivaZs8St3aG7ED00JbhWGfv2XP4dHO17sK-25JPF32UZheYRFh3RZvfG65ENUkhl5Q"/>
+            <img alt="Pistas de bowling" class="w-100 h-100 object-fit-cover"
+                 src="{% static 'bowling_center/images/pistas-bowling.jpg' %}"/>
           </div>
         </div>
       </div>
@@ -126,8 +126,8 @@
             </p>
           </div>
           <div class="rounded-4 overflow-hidden position-relative" style="height: 240px;">
-            <img alt="Cócteles de autor" class="w-100 h-100 object-fit-cover"
-                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuhvqfA49CrEdkMal5SN_hCRI0WWO0-nn-xbe90UbDKKSu75r-PomGYQiNjNx9tuDrOxD_zaNJ-iQcmFR7TarbMntQSfdYNj7ybxnyhQUiGA-TM1S6GTIPthS7o2rpx90FaRnBxfXoaN65xoNcjv_UXXPt59SKYHorPxKjejPsPgpMqLMYsVrjetMMcNvKUp_RSTDNuZ4TZygOK5X7TWy3fOAbDuuh3cDo13hBuquvQpXu6UO7S2SdLQ"/>
+            <img alt="Cóctel de autor servido en el lounge" class="w-100 h-100 object-fit-cover"
+                 src="{% static 'bowling_center/images/cocktail-lounge.jpg' %}"/>
           </div>
         </div>
       </div>
@@ -231,7 +231,7 @@
                 <span style="color: var(--brand-text-muted);">Hasta {{ pista.obtenerCapacidadMaxima }} jugadores</span>
                 <span class="fw-bold text-dark">$ {{ pista.obtenerPrecioHora }}<span class="fw-normal text-muted">/h</span></span>
               </div>
-              <a class="btn btn-brand-light w-100" href="{% url 'myapp:reserva' %}">
+              <a class="btn btn-brand-light w-100" href="{% url 'bowling_center:reserva' %}">
                 Reservar esta pista
               </a>
             </div>
@@ -260,7 +260,7 @@
             Las pistas VIP y las salas privadas suelen completarse con días de anticipación. Haz tu reserva en menos de dos minutos sin cargos de gestión previa.
           </p>
           <div class="d-flex flex-column flex-sm-row gap-3">
-            <a href="{% url 'myapp:reserva' %}" class="btn btn-brand-coral px-4 py-3 d-inline-flex align-items-center justify-content-center gap-2">
+            <a href="{% url 'bowling_center:reserva' %}" class="btn btn-brand-coral px-4 py-3 d-inline-flex align-items-center justify-content-center gap-2">
               <i class="bi bi-calendar3"></i>
               <span>Reservar Pista Ahora</span>
             </a>

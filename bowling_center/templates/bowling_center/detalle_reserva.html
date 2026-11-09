@@ -1,13 +1,9 @@
-{% extends 'myapp/base.html' %}
+{% extends 'bowling_center/base.html' %}
 
 {% block title %}Reserva {{ reserva.codigo }} — Pins & Co.{% endblock %}
 
 {% block extra_css %}
 <style>
-  @media print {
-    header, footer, .no-imprimir { display: none !important; }
-    .card-rounded { box-shadow: none !important; border: 1px solid #ddd; }
-  }
   .codigo-reserva {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     letter-spacing: 0.18em;
@@ -43,6 +39,10 @@
             <span class="badge rounded-pill px-3 py-2" style="background:#fff6dd;color:#8a6100;">Pendiente de pago</span>
           {% elif reserva.estado.nombre == 'pagada' %}
             <span class="badge rounded-pill px-3 py-2" style="background:#e6f7ec;color:#1c7a45;">Pagada</span>
+          {% elif reserva.estado.nombre == 'en_curso' %}
+            <span class="badge rounded-pill px-3 py-2" style="background:#e7efff;color:#3b4a63;">En curso</span>
+          {% elif reserva.estado.nombre == 'finalizada' %}
+            <span class="badge rounded-pill px-3 py-2" style="background:#eef2f8;color:#3b4a63;">Finalizada</span>
           {% elif reserva.estado.nombre == 'cancelada' %}
             <span class="badge rounded-pill px-3 py-2" style="background:#f1f0f6;color:#6b6880;">Cancelada</span>
           {% else %}
@@ -118,7 +118,7 @@
                       {{ producto.get_tipo_display }} · $ {{ producto.precio }}
                     </div>
                   </div>
-                  <form method="post" action="{% url 'myapp:agregar_pedido' reserva.codigo %}"
+                  <form method="post" action="{% url 'bowling_center:agregar_pedido' reserva.codigo %}"
                         class="d-flex align-items-center gap-2 no-imprimir">
                     {% csrf_token %}
                     <input type="hidden" name="producto" value="{{ producto.pk }}">
@@ -159,22 +159,22 @@
           {% endif %}
         {% endif %}
 
-        <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mt-4 pt-4 border-top no-imprimir">
-          <a class="btn btn-light px-4" href="{% url 'myapp:consulta_reserva' %}">
+        <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mt-4 pt-4 border-top">
+          <a class="btn btn-light px-4" href="{% url 'bowling_center:consulta_reserva' %}">
             <i class="bi bi-arrow-left me-1"></i> Buscar otra
           </a>
 
           <div class="d-flex gap-2">
-            <a class="btn btn-brand-light px-4" href="{% url 'myapp:partida' reserva.codigo %}">
+            <a class="btn btn-brand-light px-4" href="{% url 'bowling_center:partida' reserva.codigo %}">
               <i class="bi bi-controller me-1"></i> Jugar
             </a>
 
-            <button class="btn btn-light px-4" onclick="window.print()" type="button">
-              <i class="bi bi-printer me-1"></i> Imprimir
-            </button>
+            <a class="btn btn-brand-primary px-4" href="{% url 'bowling_center:comprobante_reserva' reserva.codigo %}">
+              <i class="bi bi-file-earmark-pdf me-1"></i> Descargar datos de la reserva (PDF)
+            </a>
 
             {% if reserva.sePuedeCancelar %}
-              <form method="post" action="{% url 'myapp:cancelar_reserva' reserva.codigo %}"
+              <form method="post" action="{% url 'bowling_center:cancelar_reserva' reserva.codigo %}"
                     onsubmit="return confirm('¿Seguro que querés cancelar la reserva?');">
                 {% csrf_token %}
                 <button class="btn btn-outline-danger px-4" type="submit">

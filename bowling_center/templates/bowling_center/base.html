@@ -17,12 +17,12 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="{% static 'myapp/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'bowling_center/css/style.css' %}">
 
   {% block extra_css %}{% endblock %}
 </head>
 <body>
-  {% include 'myapp/includes/navbar.html' %}
+  {% include 'bowling_center/includes/navbar.html' %}
 
   <!-- Spacer for fixed navbar -->
   <div style="height: 76px;"></div>
@@ -31,7 +31,7 @@
     {% block content %}{% endblock %}
   </main>
 
-  {% include 'myapp/includes/footer.html' %}
+  {% include 'bowling_center/includes/footer.html' %}
 
   <!-- Toast Feedback -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">

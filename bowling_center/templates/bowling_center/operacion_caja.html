@@ -1,0 +1,152 @@
+{% extends 'bowling_center/base.html' %}
+
+{% block title %}Caja {{ reserva.codigo }} — Pins & Co.{% endblock %}
+
+{% block content %}
+<section class="container-xl py-5">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} border-0 rounded-4 mb-4" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div>
+      <span class="badge-caps d-block mb-2" style="color: var(--brand-primary);">Caja de operación</span>
+      <h1 class="display-6 fw-bold text-dark mb-2">Reserva {{ reserva.codigo }}</h1>
+      <p class="text-muted mb-0">{{ reserva.cliente.nombre }} · Pista {{ reserva.pista.numero_pista }} · {{ reserva.fecha|date:"d/m/Y" }}</p>
+    </div>
+    <a class="btn btn-brand-light" href="{% url 'bowling_center:operacion' %}">
+      <i class="bi bi-arrow-left me-1"></i> Volver al mapa
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="bg-white card-rounded p-4 p-md-5 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <span class="badge-caps d-block mb-1" style="color: var(--brand-outline);">Consumos</span>
+            <h2 class="font-heading fw-bold fs-4 mb-0">Pedidos de cafetería</h2>
+          </div>
+          <i class="bi bi-cup-hot fs-3" style="color: var(--brand-primary);"></i>
+        </div>
+
+        {% for pedido in reserva.pedidos.all %}
+          <div class="rounded-4 p-3 p-md-4 mb-3" style="background: var(--brand-surface-low);">
+            <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mb-3">
+              <div>
+                <span class="fw-bold">Pedido #{{ pedido.pk }}</span>
+                <span class="small text-muted ms-sm-2">{{ pedido.fecha_hora_pedido|date:"d/m/Y H:i" }}</span>
+              </div>
+              {% if pedido.estado.nombre == "abierto" %}
+                <span class="badge rounded-pill text-bg-warning align-self-start">Abierto</span>
+              {% elif pedido.estado.nombre == "cerrado" %}
+                <span class="badge rounded-pill text-bg-success align-self-start">Cerrado</span>
+              {% else %}
+                <span class="badge rounded-pill text-bg-secondary align-self-start">{{ pedido.estado.nombre|capfirst }}</span>
+              {% endif %}
+            </div>
+
+            {% for detalle in pedido.detalles.all %}
+              <div class="d-flex justify-content-between gap-3 small py-2 border-bottom">
+                <span>{{ detalle.cantidad }} × {{ detalle.producto.nombre }}</span>
+                <span class="text-nowrap">
+                  $ {{ detalle.precio_unitario|floatformat:2 }} c/u ·
+                  <strong>$ {{ detalle.calcularSubtotal|floatformat:2 }}</strong>
+                </span>
+              </div>
+            {% empty %}
+              <p class="small text-muted mb-2">Este pedido no tiene productos.</p>
+            {% endfor %}
+
+            <div class="d-flex justify-content-between fw-bold mt-3">
+              <span>Subtotal del pedido</span>
+              <span>$ {{ pedido.calcularTotal|floatformat:2 }}</span>
+            </div>
+
+            {% if pedido.estado.nombre == "abierto" and reserva.estado.nombre != "cancelada" %}
+              <form class="mt-3" method="post" action="{% url 'bowling_center:cerrar_pedido' reserva.codigo pedido.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-brand-primary btn-sm" type="submit">
+                  <i class="bi bi-lock me-1"></i> Cerrar pedido
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        {% empty %}
+          <div class="rounded-4 p-4 text-center" style="background: var(--brand-surface-low);">
+            <p class="text-muted mb-0">Todavía no hay pedidos asociados a esta reserva.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="bg-white card-rounded p-4 p-md-5 shadow-sm mb-4">
+        <span class="badge-caps d-block mb-1" style="color: var(--brand-outline);">Resumen</span>
+        <h2 class="font-heading fw-bold fs-4 mb-4">Total de la reserva</h2>
+
+        <div class="d-flex justify-content-between gap-3 mb-3">
+          <span class="text-muted">Pista · {{ reserva.calcularDuracion|floatformat:0 }} min</span>
+          <span class="fw-semibold">$ {{ reserva.calcularCostoPista|floatformat:2 }}</span>
+        </div>
+        <div class="d-flex justify-content-between gap-3 mb-3">
+          <span class="text-muted">Pedidos</span>
+          <span class="fw-semibold">$ {{ reserva.calcularCostoPedidos|floatformat:2 }}</span>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between align-items-center gap-3">
+          <span class="fw-bold">Total</span>
+          <span class="fs-4 fw-bold" style="color: var(--brand-primary);">$ {{ reserva.calcularCostoTotal|floatformat:2 }}</span>
+        </div>
+        <p class="small text-muted mt-3 mb-0">Se muestran los precios congelados al crear la reserva y cada pedido.</p>
+      </div>
+
+      <div class="bg-white card-rounded p-4 p-md-5 shadow-sm">
+        <span class="badge-caps d-block mb-1" style="color: var(--brand-outline);">Estado</span>
+        <h2 class="font-heading fw-bold fs-4 mb-3">Situación de la reserva</h2>
+        <p class="mb-4">
+          {% if reserva.estado.nombre == "pendiente_a_pago" %}
+            <span class="badge rounded-pill text-bg-warning">Pendiente de pago</span>
+          {% elif reserva.estado.nombre == "en_curso" %}
+            <span class="badge rounded-pill text-bg-primary">En curso</span>
+          {% elif reserva.estado.nombre == "pagada" %}
+            <span class="badge rounded-pill text-bg-success">Pagada</span>
+          {% elif reserva.estado.nombre == "finalizada" %}
+            <span class="badge rounded-pill text-bg-secondary">Finalizada</span>
+          {% else %}
+            <span class="badge rounded-pill text-bg-secondary">Cancelada</span>
+          {% endif %}
+        </p>
+
+        {% if reserva.estado.nombre == "pendiente_a_pago" or reserva.estado.nombre == "en_curso" %}
+          <form method="post" action="{% url 'bowling_center:marcar_pagada' reserva.codigo %}">
+            {% csrf_token %}
+            <button class="btn btn-brand-primary w-100" type="submit">
+              <i class="bi bi-cash-coin me-1"></i> Marcar pagada
+            </button>
+          </form>
+        {% elif reserva.estado.nombre == "pagada" %}
+          <form method="post" action="{% url 'bowling_center:finalizar_reserva' reserva.codigo %}">
+            {% csrf_token %}
+            <button class="btn btn-brand-primary w-100" type="submit">
+              <i class="bi bi-check2-circle me-1"></i> Finalizar reserva
+            </button>
+          </form>
+        {% elif reserva.estado.nombre == "finalizada" %}
+          <a class="btn btn-brand-primary w-100" href="{% url 'bowling_center:comprobante_reserva' reserva.codigo %}">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Descargar comprobante PDF
+          </a>
+        {% endif %}
+
+        <a class="btn btn-brand-light w-100 mt-3" href="{% url 'bowling_center:detalle_reserva' reserva.codigo %}">
+          Ver detalle público de la reserva
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

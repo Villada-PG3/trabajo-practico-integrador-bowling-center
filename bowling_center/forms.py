@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Pista, Producto, Reserva
+from .models import HorarioAtencion, Pista, Producto, Reserva, TipoPista
 
 
 class ReservaForm(forms.ModelForm):
@@ -145,3 +145,126 @@ class TirarForm(forms.Form):
         ),
     )
 
+
+class TipoPistaForm(forms.ModelForm):
+    class Meta:
+        model = TipoPista
+        fields = [
+            "nombre",
+            "descripcion",
+            "precio_hora",
+            "capacidad_maxima",
+            "duracion_minima",
+        ]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(
+                attrs={"class": "form-control", "rows": 3}
+            ),
+            "precio_hora": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0.01"}
+            ),
+            "capacidad_maxima": forms.NumberInput(
+                attrs={"class": "form-control", "min": 1}
+            ),
+            "duracion_minima": forms.NumberInput(
+                attrs={"class": "form-control", "min": 1}
+            ),
+        }
+        labels = {
+            "nombre": "Nombre del tipo",
+            "descripcion": "Descripción",
+            "precio_hora": "Precio por hora ($)",
+            "capacidad_maxima": "Capacidad máxima (jugadores)",
+            "duracion_minima": "Duración mínima (horas)",
+        }
+
+
+class PistaForm(forms.ModelForm):
+    class Meta:
+        model = Pista
+        fields = ["tipo_pista", "precio_hora", "disponible"]
+        widgets = {
+            "tipo_pista": forms.Select(attrs={"class": "form-select"}),
+            "precio_hora": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0.01"}
+            ),
+            "disponible": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+        }
+        labels = {
+            "tipo_pista": "Tipo de pista",
+            "precio_hora": "Precio propio por hora ($)",
+            "disponible": "Disponible para reservar",
+        }
+        help_texts = {
+            "precio_hora": "Dejalo vacío para usar el precio del tipo.",
+        }
+
+
+class HorarioAtencionForm(forms.ModelForm):
+    class Meta:
+        model = HorarioAtencion
+        fields = ["dia_semana", "hora_apertura", "hora_cierre"]
+        widgets = {
+            "dia_semana": forms.Select(attrs={"class": "form-select"}),
+            "hora_apertura": forms.TimeInput(
+                format="%H:%M",
+                attrs={"class": "form-control", "type": "time"},
+            ),
+            "hora_cierre": forms.TimeInput(
+                format="%H:%M",
+                attrs={"class": "form-control", "type": "time"},
+            ),
+        }
+        labels = {
+            "dia_semana": "Día",
+            "hora_apertura": "Hora de apertura",
+            "hora_cierre": "Hora de cierre",
+        }
+
+
+class ProductoForm(forms.ModelForm):
+    class Meta:
+        model = Producto
+        fields = ["nombre", "descripcion", "tipo", "precio"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(
+                attrs={"class": "form-control", "rows": 3}
+            ),
+            "tipo": forms.Select(attrs={"class": "form-select"}),
+            "precio": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0.01"}
+            ),
+        }
+        labels = {
+            "nombre": "Nombre del producto",
+            "descripcion": "Descripción",
+            "tipo": "Categoría",
+            "precio": "Precio ($)",
+        }
+
+
+class PedidoOperacionForm(forms.Form):
+    producto = forms.ModelChoiceField(
+        queryset=Producto.objects.none(),
+        label="Producto",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    cantidad = forms.IntegerField(
+        min_value=1,
+        max_value=20,
+        initial=1,
+        label="Cantidad",
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "min": 1, "max": 20}
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["producto"].queryset = Producto.objects.order_by(
+            "tipo", "nombre"
+        )
