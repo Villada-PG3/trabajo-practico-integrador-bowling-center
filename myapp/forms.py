@@ -1,7 +1,6 @@
 from django import forms
 
-from .models import Pista, Reserva
-
+from .models import HorarioAtencion, Pista, Reserva, TipoPista
 
 class ReservaForm(forms.ModelForm):
     """
@@ -79,3 +78,114 @@ class ReservaForm(forms.ModelForm):
                 f"(${pista.obtenerPrecioHora()}/h)"
             )
         )
+
+
+class TipoPistaForm(forms.ModelForm):
+    """
+    Formulario del panel de gestion para cargar y editar tipos de pista.
+
+    Define el precio por hora, la capacidad y la duracion minima que
+    heredan las pistas de ese tipo. El nombre lo elige el centro.
+    """
+
+    class Meta:
+        model = TipoPista
+        fields = [
+            "nombre",
+            "descripcion",
+            "precio_hora",
+            "capacidad_maxima",
+            "duracion_minima",
+        ]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(
+                attrs={"class": "form-control", "rows": 3}
+            ),
+            "precio_hora": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0.01"}
+            ),
+            "capacidad_maxima": forms.NumberInput(
+                attrs={"class": "form-control", "min": 1}
+            ),
+            "duracion_minima": forms.NumberInput(
+                attrs={"class": "form-control", "min": 1}
+            ),
+        }
+        labels = {
+            "nombre": "Nombre del tipo",
+            "descripcion": "Descripción",
+            "precio_hora": "Precio por hora ($)",
+            "capacidad_maxima": "Capacidad máxima (jugadores)",
+            "duracion_minima": "Duración mínima (horas)",
+        }
+
+
+class PistaForm(forms.ModelForm):
+    """
+    Formulario del panel de gestion para cargar y editar pistas.
+
+    El numero de pista lo asigna la base de datos. El precio propio es
+    opcional: si se deja vacio, la pista usa el precio de su tipo.
+    """
+
+    class Meta:
+        model = Pista
+        fields = ["tipo_pista", "precio_hora", "disponible"]
+        widgets = {
+            "tipo_pista": forms.Select(attrs={"class": "form-select"}),
+            "precio_hora": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0.01"}
+            ),
+            "disponible": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+        }
+        labels = {
+            "tipo_pista": "Tipo de pista",
+            "precio_hora": "Precio por hora propio ($)",
+            "disponible": "¿Disponible para reservar?",
+        }
+        help_texts = {
+            "precio_hora": "Dejalo vacío para usar el precio del tipo de pista.",
+        }
+
+    def clean_precio_hora(self):
+        precio = self.cleaned_data["precio_hora"]
+
+        if precio is not None and precio <= 0:
+            raise forms.ValidationError("El precio debe ser mayor que cero.")
+
+        return precio
+
+
+class HorarioAtencionForm(forms.ModelForm):
+    """
+    Formulario del panel de gestion para cargar y editar los horarios de
+    atencion. Se pueden cargar varias franjas el mismo dia.
+
+    Que el cierre sea posterior a la apertura lo valida
+    HorarioAtencion.clean(), y que no se repita la misma apertura el mismo
+    dia lo valida la restriccion unica del modelo. El formulario no repite
+    esas reglas.
+    """
+
+    class Meta:
+        model = HorarioAtencion
+        fields = ["dia_semana", "hora_apertura", "hora_cierre"]
+        widgets = {
+            "dia_semana": forms.Select(attrs={"class": "form-select"}),
+            "hora_apertura": forms.TimeInput(
+                format="%H:%M",
+                attrs={"class": "form-control", "type": "time"},
+            ),
+            "hora_cierre": forms.TimeInput(
+                format="%H:%M",
+                attrs={"class": "form-control", "type": "time"},
+            ),
+        }
+        labels = {
+            "dia_semana": "Día de la semana",
+            "hora_apertura": "Hora de apertura",
+            "hora_cierre": "Hora de cierre",
+        }
