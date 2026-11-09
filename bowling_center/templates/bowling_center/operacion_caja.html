@@ -137,8 +137,8 @@
             </button>
           </form>
         {% elif reserva.estado.nombre == "finalizada" %}
-          <a class="btn btn-brand-primary w-100" href="{% url 'bowling_center:comprobante_reserva' reserva.codigo %}">
-            <i class="bi bi-file-earmark-pdf me-1"></i> Descargar comprobante PDF
+          <a class="btn btn-brand-primary w-100" href="{% url 'bowling_center:detalle_reserva' reserva.codigo %}">
+            <i class="bi bi-receipt me-1"></i> Ver el detalle de la reserva
           </a>
         {% endif %}
 

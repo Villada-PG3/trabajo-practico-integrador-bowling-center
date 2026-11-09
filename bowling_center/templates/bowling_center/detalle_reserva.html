@@ -169,10 +169,6 @@
               <i class="bi bi-controller me-1"></i> Jugar
             </a>
 
-            <a class="btn btn-brand-primary px-4" href="{% url 'bowling_center:comprobante_reserva' reserva.codigo %}">
-              <i class="bi bi-file-earmark-pdf me-1"></i> Descargar datos de la reserva (PDF)
-            </a>
-
             {% if reserva.sePuedeCancelar %}
               <form method="post" action="{% url 'bowling_center:cancelar_reserva' reserva.codigo %}"
                     onsubmit="return confirm('¿Seguro que querés cancelar la reserva?');">
