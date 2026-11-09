@@ -48,7 +48,6 @@ bowling-center/
 │   ├── apps.py
 │   ├── forms.py
 │   ├── models.py
-│   ├── tests.py
 │   ├── urls.py
 │   └── views.py
 │
