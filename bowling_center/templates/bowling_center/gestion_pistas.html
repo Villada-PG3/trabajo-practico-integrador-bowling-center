@@ -1,0 +1,68 @@
+{% extends 'bowling_center/base.html' %}
+
+{% block title %}Administrar pistas — Pins & Co.{% endblock %}
+
+{% block content %}
+<section class="container-xl py-5">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} border-0 rounded-4 mb-4" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div>
+      <a class="small text-decoration-none" href="{% url 'bowling_center:gestion' %}"><i class="bi bi-arrow-left me-1"></i>Panel de gestión</a>
+      <span class="badge-caps d-block mt-3 mb-2" style="color: var(--brand-primary);">Centro</span>
+      <h1 class="display-6 fw-bold text-dark mb-2">Administrar pistas</h1>
+      <p class="text-muted mb-0">Creá y editá pistas, tarifas propias y disponibilidad.</p>
+    </div>
+    <a class="btn btn-brand-primary" href="{% url 'bowling_center:crear_pista' %}">
+      <i class="bi bi-plus-lg me-1"></i> Crear pista
+    </a>
+  </div>
+
+  {% if not pistas %}
+    <div class="bg-white card-rounded p-5 text-center shadow-sm">
+      <div class="icon-bubble mb-3" style="background: var(--brand-surface-container); color: var(--brand-primary);">
+        <i class="bi bi-bullseye fs-5"></i>
+      </div>
+      <h2 class="font-heading fw-bold fs-4">Todavía no hay pistas</h2>
+      <p class="text-muted">Primero creá un tipo de pista y después agregá tu primera pista.</p>
+      <a class="btn btn-brand-light" href="{% url 'bowling_center:gestion_tipos' %}">Administrar tipos de pista</a>
+    </div>
+  {% else %}
+    <div class="row g-4">
+      {% for pista in pistas %}
+        <div class="col-md-6 col-xl-4">
+          <article class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <span class="badge-caps d-block mb-1" style="color: var(--brand-outline);">Pista {{ pista.numero_pista }}</span>
+                <h2 class="font-heading fw-bold fs-4 text-dark">{{ pista.tipo_pista.nombre }}</h2>
+              </div>
+              {% if pista.disponible %}
+                <span class="badge rounded-pill text-bg-success">Disponible</span>
+              {% else %}
+                <span class="badge rounded-pill text-bg-secondary">Mantenimiento</span>
+              {% endif %}
+            </div>
+            <div class="small text-muted mb-4">
+              <div>Capacidad: {{ pista.obtenerCapacidadMaxima }} jugadores</div>
+              <div>Tarifa: $ {{ pista.obtenerPrecioHora }}/h{% if pista.precio_hora %} · propia{% else %} · del tipo{% endif %}</div>
+            </div>
+            <div class="d-flex gap-2 mt-auto">
+              <a class="btn btn-brand-light flex-grow-1" href="{% url 'bowling_center:editar_pista' pista.pk %}">
+                <i class="bi bi-pencil me-1"></i> Editar
+              </a>
+              <a class="btn btn-outline-danger" href="{% url 'bowling_center:eliminar_pista' pista.pk %}" aria-label="Eliminar pista {{ pista.numero_pista }}">
+                <i class="bi bi-trash"></i>
+              </a>
+            </div>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

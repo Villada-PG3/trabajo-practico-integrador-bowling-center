@@ -1,0 +1,60 @@
+{% extends 'bowling_center/base.html' %}
+
+{% block title %}Tipos de pista — Pins & Co.{% endblock %}
+
+{% block content %}
+<section class="container-xl py-5">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} border-0 rounded-4 mb-4" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div>
+      <a class="small text-decoration-none" href="{% url 'bowling_center:gestion' %}"><i class="bi bi-arrow-left me-1"></i>Panel de gestión</a>
+      <span class="badge-caps d-block mt-3 mb-2" style="color: var(--brand-primary);">Configuración</span>
+      <h1 class="display-6 fw-bold text-dark mb-2">Tipos de pista</h1>
+      <p class="text-muted mb-0">Cada tipo define la tarifa base, capacidad y duración mínima.</p>
+    </div>
+    <a class="btn btn-brand-primary" href="{% url 'bowling_center:crear_tipo_pista' %}">
+      <i class="bi bi-plus-lg me-1"></i> Crear tipo
+    </a>
+  </div>
+
+  <div class="row g-4">
+    {% for tipo in tipos %}
+      <div class="col-md-6 col-xl-4">
+        <article class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column">
+          <span class="badge-caps mb-1" style="color: var(--brand-outline);">{{ tipo.pistas.count }} pistas</span>
+          <h2 class="font-heading fw-bold fs-4 text-dark mb-2">{{ tipo.nombre }}</h2>
+          {% if tipo.descripcion %}
+            <p class="small text-muted">{{ tipo.descripcion }}</p>
+          {% endif %}
+          <div class="small mb-4">
+            <div>Tarifa: <strong>$ {{ tipo.precio_hora }}/h</strong></div>
+            <div>Capacidad: {{ tipo.capacidad_maxima }} jugadores</div>
+            <div>Duración mínima: {{ tipo.duracion_minima }} h</div>
+          </div>
+          <div class="d-flex gap-2 mt-auto">
+            <a class="btn btn-brand-light flex-grow-1" href="{% url 'bowling_center:editar_tipo_pista' tipo.pk %}">
+              <i class="bi bi-pencil me-1"></i> Editar
+            </a>
+            <a class="btn btn-outline-danger" href="{% url 'bowling_center:eliminar_tipo_pista' tipo.pk %}" aria-label="Eliminar {{ tipo.nombre }}">
+              <i class="bi bi-trash"></i>
+            </a>
+          </div>
+        </article>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="bg-white card-rounded p-5 text-center shadow-sm">
+          <h2 class="font-heading fw-bold fs-4">Creá el primer tipo de pista</h2>
+          <p class="text-muted mb-3">Necesitás definir un tipo para poder crear pistas.</p>
+          <a class="btn btn-brand-primary" href="{% url 'bowling_center:crear_tipo_pista' %}">Crear tipo de pista</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

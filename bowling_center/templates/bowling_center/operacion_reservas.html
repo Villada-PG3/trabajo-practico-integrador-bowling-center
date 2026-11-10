@@ -1,0 +1,171 @@
+{% extends 'bowling_center/base.html' %}
+
+{% block title %}Agenda de reservas — Pins & Co.{% endblock %}
+
+{% block content %}
+<section class="container-xl py-5">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} border-0 rounded-4 mb-4" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div>
+      <a class="small text-decoration-none" href="{% url 'bowling_center:operacion' %}"><i class="bi bi-arrow-left me-1"></i>Mapa de pistas</a>
+      <span class="badge-caps d-block mt-3 mb-2" style="color: var(--brand-primary);">Turnos y consumos</span>
+      <h1 class="display-6 fw-bold text-dark mb-2">Agenda de reservas</h1>
+      <p class="text-muted mb-0">Buscá por fecha o titular y cargá lo que cada cliente pide en el momento.</p>
+    </div>
+    <a class="btn btn-brand-light" href="{% url 'bowling_center:gestion_productos' %}">
+      <i class="bi bi-cup-hot me-1"></i> Catálogo
+    </a>
+  </div>
+
+  <form method="get" class="bg-white card-rounded p-3 p-md-4 shadow-sm mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-5 col-lg-3">
+        <label class="form-label fw-semibold" for="filtro-fecha">Día</label>
+        <input class="form-control" id="filtro-fecha" type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+      </div>
+      <div class="col-sm-7 col-lg-6">
+        <label class="form-label fw-semibold" for="filtro-cliente">Nombre del cliente</label>
+        <input class="form-control" id="filtro-cliente" type="search" name="cliente" value="{{ cliente_busqueda }}" placeholder="Buscar por nombre">
+      </div>
+      <div class="col-lg-3 d-flex gap-2">
+        <button class="btn btn-brand-primary flex-grow-1" type="submit">
+          <i class="bi bi-search me-1"></i> Buscar
+        </button>
+        <a class="btn btn-brand-light" href="{% url 'bowling_center:operacion_reservas' %}?fecha={{ fecha_hoy|date:'Y-m-d' }}">Hoy</a>
+      </div>
+    </div>
+  </form>
+
+  <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+    <h2 class="font-heading fw-bold fs-4 mb-0">Turnos del {{ fecha|date:"l d/m/Y" }}</h2>
+    <span class="small text-muted">{{ reservas|length }} reservas</span>
+  </div>
+
+  <div class="d-flex flex-column gap-3">
+    {% for reserva in reservas %}
+      <article class="bg-white card-rounded p-3 p-md-4 shadow-sm">
+        <div class="row g-3 align-items-start">
+          <div class="col-md-4 col-xl-3">
+            <div class="badge-caps mb-1" style="color: var(--brand-outline);">Pista {{ reserva.pista.numero_pista }} · {{ reserva.pista.tipo_pista.nombre }}</div>
+            <div class="font-heading fs-5 fw-bold text-dark">{{ reserva.cliente.nombre }}</div>
+            <div class="small text-muted">{{ reserva.cliente.telefono }}</div>
+            <div class="small text-muted">{{ reserva.cantidad_jugadores }} jugadores</div>
+          </div>
+          <div class="col-sm-6 col-md-3 col-xl-2">
+            <div class="badge-caps mb-1" style="color: var(--brand-outline);">Horario</div>
+            <div class="fw-semibold">{{ reserva.hora_inicio|time:"H:i" }}–{{ reserva.hora_fin|time:"H:i" }}</div>
+            <a class="small" href="{% url 'bowling_center:detalle_reserva' reserva.codigo %}">Reserva {{ reserva.codigo }}</a>
+          </div>
+          <div class="col-sm-6 col-md-2">
+            <div class="badge-caps mb-1" style="color: var(--brand-outline);">Estado</div>
+            {% if reserva.estado.nombre == "pendiente_a_pago" %}
+              <span class="badge rounded-pill text-bg-warning">Pendiente</span>
+            {% elif reserva.estado.nombre == "en_curso" %}
+              <span class="badge rounded-pill text-bg-primary">Llegó · En curso</span>
+            {% elif reserva.estado.nombre == "pagada" %}
+              <span class="badge rounded-pill text-bg-success">Pagada</span>
+            {% elif reserva.estado.nombre == "finalizada" %}
+              <span class="badge rounded-pill text-bg-secondary">Finalizada</span>
+            {% else %}
+              <span class="badge rounded-pill text-bg-secondary">Cancelada</span>
+            {% endif %}
+          </div>
+          <div class="col-md-3 col-xl-5 d-flex flex-wrap gap-2 justify-content-md-end">
+            <a class="btn btn-sm btn-brand-light" href="{% url 'bowling_center:caja' reserva.codigo %}">
+              <i class="bi bi-receipt me-1"></i> Caja
+            </a>
+            {% if reserva.puede_registrar_llegada %}
+              <form method="post" action="{% url 'bowling_center:operacion_llegada' reserva.codigo %}">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-brand-primary" type="submit"><i class="bi bi-check-circle me-1"></i> Llegó</button>
+              </form>
+            {% endif %}
+            {% if reserva.puede_marcar_ausencia %}
+              <form method="post" action="{% url 'bowling_center:operacion_ausencia' reserva.codigo %}">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger" type="submit">No vino</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if reserva.pedidos.all %}
+          <div class="border-top mt-3 pt-3">
+            <div class="small fw-semibold mb-2">Consumos cargados</div>
+            {% for pedido in reserva.pedidos.all %}
+              <div class="small mb-2">
+                <span class="text-muted">Pedido #{{ pedido.pk }} · {{ pedido.estado.nombre|capfirst }}</span>
+                {% for detalle in pedido.detalles.all %}
+                  <div class="d-flex justify-content-between gap-2">
+                    <span>{{ detalle.cantidad }} × {{ detalle.producto.nombre }}</span>
+                    <span>$ {{ detalle.calcularSubtotal|floatformat:2 }}</span>
+                  </div>
+                {% empty %}
+                  <div class="text-muted">Sin productos todavía.</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if reserva.estado.nombre == "pendiente_a_pago" or reserva.estado.nombre == "en_curso" %}
+          <div class="border-top mt-3 pt-3">
+            {% if productos_comida or productos_bebida %}
+              <form method="post" action="{% url 'bowling_center:agregar_pedido_operacion' reserva.codigo %}" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+                <input type="hidden" name="cliente" value="{{ cliente_busqueda }}">
+                <div class="col-md-7">
+                  <label class="form-label small fw-semibold" for="producto-{{ reserva.pk }}">Agregar consumo</label>
+                  <select class="form-select form-select-sm" id="producto-{{ reserva.pk }}" name="producto" required>
+                    <option value="">Elegí una comida o bebida</option>
+                    {% if productos_comida %}
+                      <optgroup label="Comidas">
+                        {% for producto in productos_comida %}
+                          <option value="{{ producto.pk }}">{{ producto.nombre }} · $ {{ producto.precio }}</option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endif %}
+                    {% if productos_bebida %}
+                      <optgroup label="Bebidas y coctelería">
+                        {% for producto in productos_bebida %}
+                          <option value="{{ producto.pk }}">{{ producto.nombre }} · $ {{ producto.precio }}</option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endif %}
+                  </select>
+                </div>
+                <div class="col-5 col-md-2">
+                  <label class="form-label small fw-semibold" for="cantidad-{{ reserva.pk }}">Cantidad</label>
+                  <input class="form-control form-control-sm" id="cantidad-{{ reserva.pk }}" type="number" name="cantidad" value="1" min="1" max="20" required>
+                </div>
+                <div class="col-7 col-md-3">
+                  <button class="btn btn-sm btn-brand-primary w-100" type="submit">
+                    <i class="bi bi-plus-lg me-1"></i> Sumar al pedido
+                  </button>
+                </div>
+              </form>
+            {% else %}
+              <p class="small text-muted mb-0">
+                No hay productos cargados.
+                <a href="{% url 'bowling_center:crear_producto' %}">Agregar comida o bebida al catálogo</a>.
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+      </article>
+    {% empty %}
+      <div class="bg-white card-rounded p-5 text-center shadow-sm">
+        <i class="bi bi-calendar-x fs-2" style="color: var(--brand-outline);"></i>
+        <h3 class="font-heading fw-bold fs-5 mt-3">No hay reservas para esta búsqueda</h3>
+        <p class="text-muted mb-0">Probá con otro día o revisá el nombre del titular.</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

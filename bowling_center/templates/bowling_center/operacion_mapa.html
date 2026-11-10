@@ -1,0 +1,159 @@
+{% extends 'bowling_center/base.html' %}
+
+{% block title %}Operación del centro — Pins & Co.{% endblock %}
+
+{% block content %}
+<section class="container-xl py-5">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} border-0 rounded-4 mb-4" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div>
+      <span class="badge-caps d-block mb-2" style="color: var(--brand-primary);">Panel de trabajadores</span>
+      <h1 class="display-6 fw-bold text-dark mb-2">Operación del centro</h1>
+      <p class="text-muted mb-0">Estado de las pistas al {{ ahora|date:"H:i" }}.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-brand-light" href="{% url 'bowling_center:gestion' %}">
+        <i class="bi bi-sliders me-1"></i> Panel
+      </a>
+      <a class="btn btn-brand-primary" href="{% url 'bowling_center:operacion_reservas' %}">
+        <i class="bi bi-calendar3 me-1"></i> Agenda de reservas
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="bg-white card-rounded p-3 shadow-sm d-flex align-items-center gap-3">
+        <span class="rounded-circle" style="width: 12px; height: 12px; background: #198754;"></span>
+        <span class="fw-semibold">Libre</span>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="bg-white card-rounded p-3 shadow-sm d-flex align-items-center gap-3">
+        <span class="rounded-circle" style="width: 12px; height: 12px; background: #dc3545;"></span>
+        <span class="fw-semibold">Ocupada</span>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="bg-white card-rounded p-3 shadow-sm d-flex align-items-center gap-3">
+        <span class="rounded-circle" style="width: 12px; height: 12px; background: #ffc107;"></span>
+        <span class="fw-semibold">Reservada</span>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="bg-white card-rounded p-3 shadow-sm d-flex align-items-center gap-3">
+        <span class="rounded-circle" style="width: 12px; height: 12px; background: #6c757d;"></span>
+        <span class="fw-semibold">Mantenimiento</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    {% for item in pistas %}
+      <div class="col-md-6 col-xl-4">
+        <article class="bg-white card-rounded p-4 h-100 shadow-sm d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <span class="badge-caps d-block mb-1" style="color: var(--brand-outline);">Pista {{ item.pista.numero_pista }}</span>
+              <h2 class="font-heading fw-bold fs-5 text-dark mb-0">{{ item.pista.tipo_pista.nombre }}</h2>
+            </div>
+            {% if item.estado == "libre" %}
+              <span class="badge rounded-pill px-3 py-2 text-bg-success">Libre</span>
+            {% elif item.estado == "ocupada" %}
+              <span class="badge rounded-pill px-3 py-2 text-bg-danger">Ocupada</span>
+            {% elif item.estado == "reservada" %}
+              <span class="badge rounded-pill px-3 py-2 text-bg-warning">Reservada</span>
+            {% else %}
+              <span class="badge rounded-pill px-3 py-2 text-bg-secondary">Mantenimiento</span>
+            {% endif %}
+          </div>
+
+          <div class="small text-muted mb-3">
+            Capacidad: {{ item.pista.obtenerCapacidadMaxima }} jugadores
+          </div>
+
+          <form method="post" action="{% url 'bowling_center:cambiar_disponibilidad_pista' item.pista.pk %}" class="mb-3">
+            {% csrf_token %}
+            {% if item.pista.disponible %}
+              <input type="hidden" name="disponible" value="0">
+              <button class="btn btn-sm btn-outline-secondary w-100" type="submit">
+                <i class="bi bi-tools me-1"></i> Poner en mantenimiento
+              </button>
+            {% else %}
+              <input type="hidden" name="disponible" value="1">
+              <button class="btn btn-sm btn-outline-success w-100" type="submit">
+                <i class="bi bi-check-circle me-1"></i> Marcar disponible
+              </button>
+            {% endif %}
+          </form>
+
+          {% if item.reserva %}
+            <div class="rounded-4 p-3 mb-3" style="background: var(--brand-surface-low);">
+              <div class="d-flex justify-content-between gap-2 mb-2">
+                <span class="fw-semibold">{{ item.reserva.cliente.nombre }}</span>
+                <span class="small text-nowrap">{{ item.reserva.hora_inicio|time:"H:i" }}–{{ item.reserva.hora_fin|time:"H:i" }}</span>
+              </div>
+              <div class="small text-muted mb-1">{{ item.reserva.cantidad_jugadores }} jugadores</div>
+              <a class="small fw-semibold" href="{% url 'bowling_center:detalle_reserva' item.reserva.codigo %}">
+                Reserva {{ item.reserva.codigo }}
+              </a>
+            </div>
+
+            <div class="d-flex flex-column gap-2 mt-auto">
+              <a class="btn btn-brand-light w-100" href="{% url 'bowling_center:caja' item.reserva.codigo %}">
+                <i class="bi bi-receipt me-1"></i> Abrir caja
+              </a>
+
+              {% if item.estado == "reservada" and item.reserva.estado.nombre == "pendiente_a_pago" %}
+                {% if item.puede_checkin %}
+                  <form method="post" action="{% url 'bowling_center:operacion_llegada' item.reserva.codigo %}">
+                    {% csrf_token %}
+                    <button class="btn btn-brand-primary w-100" type="submit">
+                      <i class="bi bi-check-circle me-1"></i> Llegó
+                    </button>
+                  </form>
+                {% else %}
+                  <button class="btn btn-brand-primary w-100" type="button" disabled title="Disponible durante el horario de la reserva">
+                    <i class="bi bi-check-circle me-1"></i> Llegó
+                  </button>
+                {% endif %}
+                {% if item.puede_marcar_ausencia %}
+                  <form method="post" action="{% url 'bowling_center:operacion_ausencia' item.reserva.codigo %}">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-danger w-100" type="submit">
+                      <i class="bi bi-person-x me-1"></i> No vino
+                    </button>
+                  </form>
+                {% else %}
+                  <button class="btn btn-outline-secondary w-100" type="button" disabled title="Disponible 15 minutos después del inicio">
+                    No vino (desde 15 min. después)
+                  </button>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% elif item.estado == "libre" %}
+            <p class="small text-muted mt-auto mb-0">No hay reservas activas en este momento.</p>
+          {% elif item.estado == "mantenimiento" %}
+            <p class="small text-muted mt-auto mb-0">No se puede asignar esta pista.</p>
+          {% else %}
+            <p class="small text-muted mt-auto mb-0">Sin reserva asignada.</p>
+          {% endif %}
+        </article>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="bg-white card-rounded p-5 text-center shadow-sm">
+          <p class="text-muted mb-0">Todavía no hay pistas cargadas.</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% load static %}
+<header class="fixed-top" style="background-color: rgba(251, 248, 255, 0.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 2px 14px rgba(43,45,66,0.04);">
+  <div class="container-xl">
+    <div class="d-flex align-items-center justify-content-between py-3">
+      <!-- Brand -->
+      <a class="d-flex align-items-center text-decoration-none" href="{% url 'bowling_center:home' %}#inicio" aria-label="Pins & Co. — Inicio">
+        <img alt="Pins & Co." class="object-fit-contain"
+             src="{% static 'bowling_center/images/pins-logo.jpg' %}"
+             style="height: 42px; max-width: 190px; width: auto;"/>
+      </a>
+
+      <!-- Center Nav -->
+      <nav class="d-none d-md-flex nav-pill-wrapper gap-1">
+        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'bowling_center:home' %}#inicio">Inicio</a>
+        <a class="nav-link" href="{% url 'bowling_center:home' %}#sobre-nosotros">Sobre Nosotros</a>
+        <a class="nav-link" href="{% url 'bowling_center:home' %}#pistas">Pistas</a>
+        <a class="nav-link" href="{% url 'bowling_center:home' %}#ubicacion">Ubicación</a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'consulta_reserva' or request.resolver_match.url_name == 'detalle_reserva' %}active{% endif %}" href="{% url 'bowling_center:consulta_reserva' %}">Mi reserva</a>
+      </nav>
+
+            <!-- Right -->
+      <div class="d-flex align-items-center gap-3">
+        <a class="btn btn-brand-coral px-4 py-2 d-none d-sm-inline-flex align-items-center" href="{% url 'bowling_center:reserva' %}">
+          Reservar Pista
+        </a>
+        <a class="btn btn-brand-light px-3 py-2 d-inline-flex align-items-center gap-2"
+           href="{% url 'bowling_center:gestion' %}" aria-label="Acceso para trabajadores">
+          <i class="bi bi-person-workspace"></i>
+          <span class="d-none d-lg-inline">Trabajadores</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
