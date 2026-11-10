@@ -83,6 +83,20 @@
         </article>
       </a>
     </div>
+    <div class="col-md-6 col-xl-3">
+      <a class="text-decoration-none" href="{% url 'bowling_center:gestion_clientes' %}">
+        <article class="bg-white card-rounded p-4 h-100 shadow-sm">
+          <div class="icon-bubble mb-3" style="background: var(--brand-secondary-bg); color: var(--brand-secondary);">
+            <i class="bi bi-people fs-5"></i>
+          </div>
+          <div class="d-flex justify-content-between align-items-center gap-3">
+            <h2 class="font-heading fw-bold fs-4 text-dark mb-0">Clientes</h2>
+            <span class="badge rounded-pill" style="background: var(--brand-surface-container); color: var(--brand-text);">{{ cantidad_clientes }}</span>
+          </div>
+          <p class="small text-muted mt-2 mb-0">Consultá y corregí los datos de quienes reservan.</p>
+        </article>
+      </a>
+    </div>
   </div>
 
   <div class="dark-cta-card p-4 p-md-5 text-white shadow-sm">

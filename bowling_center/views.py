@@ -28,6 +28,7 @@ from .forms import (
     AgregarJugadorForm,
     AgregarProductoForm,
     BuscarReservaForm,
+    ClienteForm,
     HorarioAtencionForm,
     PedidoOperacionForm,
     PistaForm,
@@ -114,6 +115,7 @@ class GestionPanelView(StaffRequiredMixin, TemplateView):
         contexto["cantidad_tipos"] = TipoPista.objects.count()
         contexto["cantidad_horarios"] = HorarioAtencion.objects.count()
         contexto["cantidad_productos"] = Producto.objects.count()
+        contexto["cantidad_clientes"] = Cliente.objects.count()
         return contexto
 
 
@@ -143,6 +145,13 @@ class GestionProductosView(StaffRequiredMixin, ListView):
     template_name = "bowling_center/gestion_productos.html"
     context_object_name = "productos"
     queryset = Producto.objects.order_by("tipo", "nombre")
+
+
+class GestionClientesView(StaffRequiredMixin, ListView):
+    model = Cliente
+    template_name = "bowling_center/gestion_clientes.html"
+    context_object_name = "clientes"
+    queryset = Cliente.objects.order_by("nombre")
 
 
 class GestionCreateView(StaffRequiredMixin, CreateView):
@@ -316,11 +325,38 @@ class EditarProductoView(GestionUpdateView):
     success_url = reverse_lazy("bowling_center:gestion_productos")
 
 
-class EliminarProductoView(GestionDeleteView):
+class EliminarProductoView(GestionDeleteView):      
     model = Producto
     page_title = "Eliminar producto"
     list_url_name = "gestion_productos"
     success_url = reverse_lazy("bowling_center:gestion_productos")
+
+
+class CrearClienteView(GestionCreateView):
+    model = Cliente
+    form_class = ClienteForm
+    object_label = "El cliente"
+    page_title = "Nuevo cliente"
+    page_description = "Cargá los datos del cliente."
+    list_url_name = "gestion_clientes"
+    success_url = reverse_lazy("bowling_center:gestion_clientes")
+
+
+class EditarClienteView(GestionUpdateView):
+    model = Cliente
+    form_class = ClienteForm
+    object_label = "El cliente"
+    page_title = "Editar cliente"
+    page_description = "Actualizá los datos del cliente."
+    list_url_name = "gestion_clientes"
+    success_url = reverse_lazy("bowling_center:gestion_clientes")
+
+
+class EliminarClienteView(GestionDeleteView):
+    model = Cliente
+    page_title = "Eliminar cliente"
+    list_url_name = "gestion_clientes"
+    success_url = reverse_lazy("bowling_center:gestion_clientes")
 
 
 def _fecha_hora_reserva(fecha, hora):

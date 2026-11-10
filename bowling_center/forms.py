@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import HorarioAtencion, Pista, Producto, Reserva, TipoPista
+from .models import Cliente, HorarioAtencion, Pista, Producto, Reserva, TipoPista
 
 
 class ReservaForm(forms.ModelForm):
@@ -244,6 +244,24 @@ class ProductoForm(forms.ModelForm):
             "descripcion": "Descripción",
             "tipo": "Categoría",
             "precio": "Precio ($)",
+        }
+
+
+class ClienteForm(forms.ModelForm):
+    class Meta:
+        model = Cliente
+        fields = ["nombre", "direccion", "telefono", "email"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "direccion": forms.TextInput(attrs={"class": "form-control"}),
+            "telefono": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+        }
+        labels = {
+            "nombre": "Nombre y apellido",
+            "direccion": "Dirección",
+            "telefono": "Teléfono",
+            "email": "Correo electrónico",
         }
 
 
