@@ -96,7 +96,7 @@ urlpatterns = [
         views.EliminarProductoView.as_view(),
         name="eliminar_producto",
     ),
-        path(
+    path(
         "gestion/clientes/",
         views.GestionClientesView.as_view(),
         name="gestion_clientes",
