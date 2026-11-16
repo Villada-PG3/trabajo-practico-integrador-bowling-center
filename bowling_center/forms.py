@@ -22,12 +22,12 @@ class ReservaForm(forms.ModelForm):
     )
     direccion = forms.CharField(
         max_length=200,
-        label="Direccion",
+        label="Dirección",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
     telefono = forms.CharField(
         max_length=30,
-        label="Telefono",
+        label="Teléfono",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
     email = forms.EmailField(
@@ -84,7 +84,7 @@ class BuscarReservaForm(forms.Form):
 
     codigo = forms.CharField(
         max_length=8,
-        label="Codigo de reserva",
+        label="Código de reserva",
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
@@ -267,7 +267,7 @@ class ClienteForm(forms.ModelForm):
 
 class PedidoOperacionForm(forms.Form):
     producto = forms.ModelChoiceField(
-        queryset=Producto.objects.none(),
+        queryset=Producto.objects.all(),
         label="Producto",
         widget=forms.Select(attrs={"class": "form-select"}),
     )
@@ -280,9 +280,3 @@ class PedidoOperacionForm(forms.Form):
             attrs={"class": "form-control", "min": 1, "max": 20}
         ),
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["producto"].queryset = Producto.objects.order_by(
-            "tipo", "nombre"
-        )

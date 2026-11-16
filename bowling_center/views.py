@@ -144,7 +144,6 @@ class GestionProductosView(StaffRequiredMixin, ListView):
     model = Producto
     template_name = "bowling_center/gestion_productos.html"
     context_object_name = "productos"
-    queryset = Producto.objects.order_by("tipo", "nombre")
 
 
 class GestionClientesView(StaffRequiredMixin, ListView):
@@ -231,7 +230,6 @@ class CrearTipoPistaView(GestionCreateView):
     page_title = "Nuevo tipo de pista"
     page_description = "Definí el precio, la capacidad y la duración mínima."
     list_url_name = "gestion_tipos"
-    success_url = reverse_lazy("bowling_center:gestion_tipos")
 
 
 class EditarTipoPistaView(GestionUpdateView):
@@ -241,14 +239,12 @@ class EditarTipoPistaView(GestionUpdateView):
     page_title = "Editar tipo de pista"
     page_description = "Actualizá las características de este tipo de pista."
     list_url_name = "gestion_tipos"
-    success_url = reverse_lazy("bowling_center:gestion_tipos")
 
 
 class EliminarTipoPistaView(GestionDeleteView):
     model = TipoPista
     page_title = "Eliminar tipo de pista"
     list_url_name = "gestion_tipos"
-    success_url = reverse_lazy("bowling_center:gestion_tipos")
 
 
 class CrearPistaView(GestionCreateView):
@@ -258,7 +254,6 @@ class CrearPistaView(GestionCreateView):
     page_title = "Nueva pista"
     page_description = "Elegí el tipo y definí si la pista estará disponible."
     list_url_name = "gestion_pistas"
-    success_url = reverse_lazy("bowling_center:gestion_pistas")
 
 
 class EditarPistaView(GestionUpdateView):
@@ -268,14 +263,12 @@ class EditarPistaView(GestionUpdateView):
     page_title = "Editar pista"
     page_description = "Actualizá el tipo, la tarifa o la disponibilidad."
     list_url_name = "gestion_pistas"
-    success_url = reverse_lazy("bowling_center:gestion_pistas")
 
 
 class EliminarPistaView(GestionDeleteView):
     model = Pista
     page_title = "Eliminar pista"
     list_url_name = "gestion_pistas"
-    success_url = reverse_lazy("bowling_center:gestion_pistas")
 
 
 class CrearHorarioView(GestionCreateView):
@@ -285,7 +278,6 @@ class CrearHorarioView(GestionCreateView):
     page_title = "Nuevo horario de atención"
     page_description = "Agregá una franja de apertura para el centro."
     list_url_name = "gestion_horarios"
-    success_url = reverse_lazy("bowling_center:gestion_horarios")
 
 
 class EditarHorarioView(GestionUpdateView):
@@ -295,14 +287,12 @@ class EditarHorarioView(GestionUpdateView):
     page_title = "Editar horario de atención"
     page_description = "Modificá el día o la franja horaria."
     list_url_name = "gestion_horarios"
-    success_url = reverse_lazy("bowling_center:gestion_horarios")
 
 
 class EliminarHorarioView(GestionDeleteView):
     model = HorarioAtencion
     page_title = "Eliminar horario de atención"
     list_url_name = "gestion_horarios"
-    success_url = reverse_lazy("bowling_center:gestion_horarios")
 
 
 class CrearProductoView(GestionCreateView):
@@ -312,7 +302,6 @@ class CrearProductoView(GestionCreateView):
     page_title = "Nuevo producto"
     page_description = "Agregá una comida o bebida al catálogo de cafetería."
     list_url_name = "gestion_productos"
-    success_url = reverse_lazy("bowling_center:gestion_productos")
 
 
 class EditarProductoView(GestionUpdateView):
@@ -322,14 +311,12 @@ class EditarProductoView(GestionUpdateView):
     page_title = "Editar producto"
     page_description = "Actualizá el nombre, la categoría o el precio de venta."
     list_url_name = "gestion_productos"
-    success_url = reverse_lazy("bowling_center:gestion_productos")
 
 
 class EliminarProductoView(GestionDeleteView):      
     model = Producto
     page_title = "Eliminar producto"
     list_url_name = "gestion_productos"
-    success_url = reverse_lazy("bowling_center:gestion_productos")
 
 
 class CrearClienteView(GestionCreateView):
@@ -339,7 +326,6 @@ class CrearClienteView(GestionCreateView):
     page_title = "Nuevo cliente"
     page_description = "Cargá los datos del cliente."
     list_url_name = "gestion_clientes"
-    success_url = reverse_lazy("bowling_center:gestion_clientes")
 
 
 class EditarClienteView(GestionUpdateView):
@@ -349,14 +335,17 @@ class EditarClienteView(GestionUpdateView):
     page_title = "Editar cliente"
     page_description = "Actualizá los datos del cliente."
     list_url_name = "gestion_clientes"
-    success_url = reverse_lazy("bowling_center:gestion_clientes")
 
 
 class EliminarClienteView(GestionDeleteView):
     model = Cliente
     page_title = "Eliminar cliente"
     list_url_name = "gestion_clientes"
-    success_url = reverse_lazy("bowling_center:gestion_clientes")
+
+
+def buscar_reserva(codigo):
+    # Busca una reserva por su codigo publico, sin importar mayusculas.
+    return get_object_or_404(Reserva, codigo=codigo.upper())
 
 
 def _fecha_hora_reserva(fecha, hora):
@@ -364,6 +353,43 @@ def _fecha_hora_reserva(fecha, hora):
         datetime.combine(fecha, hora),
         timezone.get_current_timezone(),
     )
+
+
+def obtener_partida(reserva):
+    # Devuelve la partida de la reserva; si no tiene, crea la primera.
+    partida = reserva.partidas.first()
+
+    if partida is None:
+        partida = Partida.objects.create(
+            reserva=reserva,
+            numero=1,
+            fecha_hora_inicio=_fecha_hora_reserva(
+                reserva.fecha, reserva.hora_inicio
+            ),
+            estado=EstadoPartida.objects.get(nombre="pendiente"),
+        )
+
+    return partida
+
+
+def guardar_estado_reserva(request, reserva, nombre_estado, mensaje):
+    # Cambia el estado de una reserva y avisa por pantalla.
+    # Reserva.save() vuelve a validar (full_clean), asi que si la reserva
+    # quedo fuera de las reglas actuales el error se muestra como mensaje
+    # en vez de cortar la pantalla con un error 500.
+    reserva.estado = EstadoReserva.objects.get(nombre=nombre_estado)
+
+    try:
+        reserva.save()
+    except ValidationError as error:
+        mensajes = " ".join(
+            texto for lista in error.message_dict.values() for texto in lista
+        )
+        messages.error(request, f"No se pudo cambiar el estado: {mensajes}")
+        return False
+
+    messages.success(request, mensaje)
+    return True
 
 
 def obtener_estado_pistas(ahora=None):
@@ -515,10 +541,7 @@ class OperacionReservasView(StaffRequiredMixin, TemplateView):
 
 class OperacionReservaActionView(StaffRequiredMixin, View):
     def get_reserva(self, codigo):
-        return get_object_or_404(
-            Reserva.objects.all(),
-            codigo=codigo.upper(),
-        )
+        return buscar_reserva(codigo)
 
     def volver_al_mapa(self):
         return redirect("bowling_center:operacion")
@@ -542,10 +565,10 @@ class CheckInReservaView(OperacionReservaActionView):
                 "pendiente y vigente.",
             )
         else:
-            reserva.estado = EstadoReserva.objects.get(nombre="en_curso")
-            reserva.save()
-            messages.success(
+            guardar_estado_reserva(
                 request,
+                reserva,
+                "en_curso",
                 f"Se registró la llegada de {reserva.cliente.nombre}.",
             )
 
@@ -571,10 +594,10 @@ class NoShowReservaView(OperacionReservaActionView):
                 "después del inicio y mientras siga vigente.",
             )
         else:
-            reserva.estado = EstadoReserva.objects.get(nombre="cancelada")
-            reserva.save()
-            messages.success(
+            guardar_estado_reserva(
                 request,
+                reserva,
+                "cancelada",
                 f"La reserva de {reserva.cliente.nombre} quedó cancelada; "
                 "la pista está libre.",
             )
@@ -619,10 +642,7 @@ class CambiarDisponibilidadPistaView(StaffRequiredMixin, View):
 
 class AgregarPedidoOperacionView(StaffRequiredMixin, View):
     def post(self, request, codigo):
-        reserva = get_object_or_404(
-            Reserva.objects.all(),
-            codigo=codigo.upper(),
-        )
+        reserva = buscar_reserva(codigo)
         fecha = request.POST.get("fecha", "")
         cliente = request.POST.get("cliente", "")
         form = PedidoOperacionForm(request.POST)
@@ -670,16 +690,10 @@ class CajaReservaView(StaffRequiredMixin, DetailView):
     slug_field = "codigo"
     slug_url_kwarg = "codigo"
 
-    def get_queryset(self):
-        return (
-            super()
-            .get_queryset()
-        )
-
 
 class CerrarPedidoView(StaffRequiredMixin, View):
     def post(self, request, codigo, pedido_id):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
         pedido = get_object_or_404(Pedido, pk=pedido_id, reserva=reserva)
 
         if (
@@ -699,12 +713,15 @@ class CerrarPedidoView(StaffRequiredMixin, View):
 
 class MarcarReservaPagadaView(StaffRequiredMixin, View):
     def post(self, request, codigo):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
 
         if reserva.estado.nombre in {"pendiente_a_pago", "en_curso"}:
-            reserva.estado = EstadoReserva.objects.get(nombre="pagada")
-            reserva.save()
-            messages.success(request, "La reserva quedó marcada como pagada.")
+            guardar_estado_reserva(
+                request,
+                reserva,
+                "pagada",
+                "La reserva quedó marcada como pagada.",
+            )
         else:
             messages.error(
                 request, "No se puede marcar como pagada en su estado actual."
@@ -715,12 +732,15 @@ class MarcarReservaPagadaView(StaffRequiredMixin, View):
 
 class FinalizarReservaView(StaffRequiredMixin, View):
     def post(self, request, codigo):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
 
         if reserva.estado.nombre == "pagada":
-            reserva.estado = EstadoReserva.objects.get(nombre="finalizada")
-            reserva.save()
-            messages.success(request, "La reserva quedó finalizada.")
+            guardar_estado_reserva(
+                request,
+                reserva,
+                "finalizada",
+                "La reserva quedó finalizada.",
+            )
         else:
             messages.error(
                 request,
@@ -739,7 +759,6 @@ class ReservaView(CreateView):
     model = Reserva
     form_class = ReservaForm
     template_name = "bowling_center/reserva.html"
-    success_url = reverse_lazy("bowling_center:reserva")
 
     def valor(self, nombre):
         # Los datos elegidos viajan en la URL mientras el cliente navega y en
@@ -966,14 +985,7 @@ class ReservaView(CreateView):
 
                 # El enunciado pide que cada reserva registre como minimo
                 # una partida: se crea la partida 1, pendiente de empezar.
-                Partida.objects.create(
-                    reserva=reserva,
-                    numero=1,
-                    fecha_hora_inicio=timezone.make_aware(
-                        datetime.combine(reserva.fecha, reserva.hora_inicio)
-                    ),
-                    estado=EstadoPartida.objects.get(nombre="pendiente"),
-                )
+                obtener_partida(reserva)
         except ValidationError as error:
             self.agregar_errores_de_la_reserva(form, error)
             return self.form_invalid(form)
@@ -986,7 +998,9 @@ class ReservaView(CreateView):
             f"{reserva.fecha} de {reserva.hora_inicio:%H:%M} a "
             f"{reserva.hora_fin:%H:%M}. Queda pendiente de pago.",
         )
-        return super().form_valid(form)
+        # La reserva ya se guardo arriba: se va directo al detalle sin
+        # volver a llamar a form.save() (guardaria lo mismo dos veces).
+        return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
         # Despues de reservar mostramos el detalle, con el codigo bien visible.
@@ -1241,9 +1255,6 @@ class DetalleReservaView(DetailView):
     slug_field = "codigo"
     slug_url_kwarg = "codigo"
 
-    def get_queryset(self):
-        return super().get_queryset()
-
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["productos"] = Producto.objects.all()
@@ -1255,13 +1266,14 @@ class CancelarReservaView(View):
     # Cancela una reserva pendiente de pago que todavia no empezo.
 
     def post(self, request, codigo):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
 
         if reserva.sePuedeCancelar():
-            reserva.estado = EstadoReserva.objects.get(nombre="cancelada")
-            reserva.save()
-            messages.success(
-                request, "La reserva quedo cancelada y la pista quedo libre."
+            guardar_estado_reserva(
+                request,
+                reserva,
+                "cancelada",
+                "La reserva quedo cancelada y la pista quedo libre.",
             )
         else:
             messages.error(
@@ -1277,7 +1289,7 @@ class AgregarPedidoView(View):
     # Suma un producto de la cafeteria a la reserva del cliente.
 
     def post(self, request, codigo):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
         form = AgregarProductoForm(request.POST)
 
         if not form.is_valid():
@@ -1305,23 +1317,6 @@ class AgregarPedidoView(View):
         messages.success(request, f"Agregado: {cantidad} x {producto.nombre}.")
 
         return redirect("bowling_center:detalle_reserva", codigo=reserva.codigo)
-
-
-def obtener_partida(reserva):
-    # Devuelve la partida de la reserva; si no tiene, crea la primera.
-    partida = reserva.partidas.first()
-
-    if partida is None:
-        partida = Partida.objects.create(
-            reserva=reserva,
-            numero=1,
-            fecha_hora_inicio=timezone.make_aware(
-                datetime.combine(reserva.fecha, reserva.hora_inicio)
-            ),
-            estado=EstadoPartida.objects.get(nombre="pendiente"),
-        )
-
-    return partida
 
 
 class PartidaView(DetailView):
@@ -1368,7 +1363,7 @@ class TirarView(View):
     # Carga un lanzamiento del jugador en el proximo turno que le toca.
 
     def post(self, request, codigo):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
         partida = obtener_partida(reserva)
 
         participacion = Participacion.objects.filter(
@@ -1445,7 +1440,7 @@ class AgregarJugadorJuegoView(View):
     # Suma un jugador a la partida de la reserva.
 
     def post(self, request, codigo):
-        reserva = get_object_or_404(Reserva, codigo=codigo.upper())
+        reserva = buscar_reserva(codigo)
         partida = obtener_partida(reserva)
 
         if (
