@@ -172,6 +172,13 @@ class Reserva(models.Model):
     def clean(self):
         super().clean()
 
+        # Si la reserva ya existe y no se tocaron los datos que deciden las
+        # reglas, se sale sin revalidar: es un cambio de estado, no de datos.
+        # Sin esto, una reserva vieja se rechaza sola cuando el centro cambia
+        # un horario de atencion, y la caja no la puede cobrar.
+        if self.pk and not self.cambiaronLosDatos():
+            return
+
         errores = {}
 
         if self.hora_inicio and self.hora_fin:
@@ -244,6 +251,32 @@ class Reserva(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+    def cambiaronLosDatos(self):
+        # Compara los campos que deciden las reglas contra lo que hay guardado.
+        # Devuelve True si la reserva es nueva o si alguno de esos campos
+        # cambio: en ese caso hay que validar todo otra vez.
+        if not self.pk:
+            return True
+
+        anterior = Reserva.objects.filter(pk=self.pk).values(
+            "fecha",
+            "hora_inicio",
+            "hora_fin",
+            "pista_id",
+            "cantidad_jugadores",
+        ).first()
+
+        if anterior is None:
+            return True
+
+        return (
+            anterior["fecha"] != self.fecha
+            or anterior["hora_inicio"] != self.hora_inicio
+            or anterior["hora_fin"] != self.hora_fin
+            or anterior["pista_id"] != self.pista_id
+            or anterior["cantidad_jugadores"] != self.cantidad_jugadores
+        )
 
     def sePuedePedir(self):
         # Una reserva cancelada ya no admite pedidos de cafeteria.
