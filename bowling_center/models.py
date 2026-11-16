@@ -80,9 +80,6 @@ class Jugador(models.Model):
         related_name="Jugador"
     )
 
-    def esCliente(self):
-        return self.cliente is not None
-
     def __str__(self):
         return self.nombre
 
@@ -106,16 +103,6 @@ class Pista(models.Model):
 
     def obtenerDuracionMinima(self):
         return self.tipo_pista.duracion_minima
-
-    def estaDisponible(self, fecha, inicio, fin):
-        reservas = Reserva.objects.filter(
-            pista=self,
-            fecha=fecha,
-            hora_inicio__lt=fin,
-            hora_fin__gt=inicio
-        ).exclude(estado__nombre="cancelada")
-
-        return not reservas.exists()
 
     def __str__(self):
         return f"Pista {self.numero_pista}"
@@ -171,6 +158,13 @@ class Reserva(models.Model):
 
     def clean(self):
         super().clean()
+
+        # Si la reserva ya existe y no se tocaron los datos que deciden las
+        # reglas, se sale sin revalidar: es un cambio de estado, no de datos.
+        # Sin esto, una reserva vieja se rechaza sola cuando el centro cambia
+        # un horario de atencion, y la caja no la puede cobrar.
+        if self.pk and not self.cambiaronLosDatos():
+            return
 
         errores = {}
 
@@ -244,6 +238,32 @@ class Reserva(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+    def cambiaronLosDatos(self):
+        # Compara los campos que deciden las reglas contra lo que hay guardado.
+        # Devuelve True si la reserva es nueva o si alguno de esos campos
+        # cambio: en ese caso hay que validar todo otra vez.
+        if not self.pk:
+            return True
+
+        anterior = Reserva.objects.filter(pk=self.pk).values(
+            "fecha",
+            "hora_inicio",
+            "hora_fin",
+            "pista_id",
+            "cantidad_jugadores",
+        ).first()
+
+        if anterior is None:
+            return True
+
+        return (
+            anterior["fecha"] != self.fecha
+            or anterior["hora_inicio"] != self.hora_inicio
+            or anterior["hora_fin"] != self.hora_fin
+            or anterior["pista_id"] != self.pista_id
+            or anterior["cantidad_jugadores"] != self.cantidad_jugadores
+        )
 
     def sePuedePedir(self):
         # Una reserva cancelada ya no admite pedidos de cafeteria.
@@ -607,43 +627,6 @@ class Lanzamiento(models.Model):
         # codigo y no desde el admin o un formulario.
         self.full_clean()
         super().save(*args, **kwargs)
-
-    def esStrike(self):
-        # Para ser strike hay que derribar los 10 pinos
-        if self.pinos_derribados != 10:
-            return False
-
-        # En los frames 1 al 9, solo el primer lanzamiento puede ser strike
-        if self.numero_frame < 10:
-            return self.numero_lanzamiento == 1
-
-        # En el frame 10 la pista se resetea con cada strike o spare,
-        # asi que el 2do y el 3er lanzamiento tambien pueden ser strike
-        return True
-
-    def esSpare(self):
-        # El spare es siempre el segundo lanzamiento del frame
-        if self.numero_lanzamiento != 2:
-            return False
-
-        if self.participacion_id is None:
-            return False
-
-        # Buscamos el primer lanzamiento de este mismo frame
-        primero = Lanzamiento.objects.filter(
-            participacion_id=self.participacion_id,
-            numero_frame=self.numero_frame,
-            numero_lanzamiento=1
-        ).first()
-
-        if primero is None:
-            return False
-
-        # Es spare si ambos lanzamientos suman 10 y el primero no fue strike
-        return (
-            primero.pinos_derribados < 10
-            and primero.pinos_derribados + self.pinos_derribados == 10
-        )
 
     def __str__(self):
         return (

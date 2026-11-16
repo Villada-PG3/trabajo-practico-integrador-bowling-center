@@ -366,6 +366,26 @@ def _fecha_hora_reserva(fecha, hora):
     )
 
 
+def guardar_estado_reserva(request, reserva, nombre_estado, mensaje):
+    # Cambia el estado de una reserva y avisa por pantalla.
+    # Reserva.save() vuelve a validar (full_clean), asi que si la reserva
+    # quedo fuera de las reglas actuales el error se muestra como mensaje
+    # en vez de cortar la pantalla con un error 500.
+    reserva.estado = EstadoReserva.objects.get(nombre=nombre_estado)
+
+    try:
+        reserva.save()
+    except ValidationError as error:
+        mensajes = " ".join(
+            texto for lista in error.message_dict.values() for texto in lista
+        )
+        messages.error(request, f"No se pudo cambiar el estado: {mensajes}")
+        return False
+
+    messages.success(request, mensaje)
+    return True
+
+
 def obtener_estado_pistas(ahora=None):
     momento = timezone.localtime(ahora or timezone.now())
     hasta = momento + timedelta(minutes=60)
@@ -542,10 +562,10 @@ class CheckInReservaView(OperacionReservaActionView):
                 "pendiente y vigente.",
             )
         else:
-            reserva.estado = EstadoReserva.objects.get(nombre="en_curso")
-            reserva.save()
-            messages.success(
+            guardar_estado_reserva(
                 request,
+                reserva,
+                "en_curso",
                 f"Se registró la llegada de {reserva.cliente.nombre}.",
             )
 
@@ -571,10 +591,10 @@ class NoShowReservaView(OperacionReservaActionView):
                 "después del inicio y mientras siga vigente.",
             )
         else:
-            reserva.estado = EstadoReserva.objects.get(nombre="cancelada")
-            reserva.save()
-            messages.success(
+            guardar_estado_reserva(
                 request,
+                reserva,
+                "cancelada",
                 f"La reserva de {reserva.cliente.nombre} quedó cancelada; "
                 "la pista está libre.",
             )
@@ -702,9 +722,12 @@ class MarcarReservaPagadaView(StaffRequiredMixin, View):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
 
         if reserva.estado.nombre in {"pendiente_a_pago", "en_curso"}:
-            reserva.estado = EstadoReserva.objects.get(nombre="pagada")
-            reserva.save()
-            messages.success(request, "La reserva quedó marcada como pagada.")
+            guardar_estado_reserva(
+                request,
+                reserva,
+                "pagada",
+                "La reserva quedó marcada como pagada.",
+            )
         else:
             messages.error(
                 request, "No se puede marcar como pagada en su estado actual."
@@ -718,9 +741,12 @@ class FinalizarReservaView(StaffRequiredMixin, View):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
 
         if reserva.estado.nombre == "pagada":
-            reserva.estado = EstadoReserva.objects.get(nombre="finalizada")
-            reserva.save()
-            messages.success(request, "La reserva quedó finalizada.")
+            guardar_estado_reserva(
+                request,
+                reserva,
+                "finalizada",
+                "La reserva quedó finalizada.",
+            )
         else:
             messages.error(
                 request,
@@ -1258,10 +1284,11 @@ class CancelarReservaView(View):
         reserva = get_object_or_404(Reserva, codigo=codigo.upper())
 
         if reserva.sePuedeCancelar():
-            reserva.estado = EstadoReserva.objects.get(nombre="cancelada")
-            reserva.save()
-            messages.success(
-                request, "La reserva quedo cancelada y la pista quedo libre."
+            guardar_estado_reserva(
+                request,
+                reserva,
+                "cancelada",
+                "La reserva quedo cancelada y la pista quedo libre.",
             )
         else:
             messages.error(
