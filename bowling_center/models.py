@@ -91,7 +91,7 @@ class Jugador(models.Model):
 class Pista(models.Model):
     numero_pista = models.AutoField(primary_key=True)
     precio_hora = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    disponible  = models.BooleanField(default=True)
+    disponible = models.BooleanField(default=True)
     tipo_pista = models.ForeignKey(
         TipoPista,
         on_delete=models.PROTECT,
@@ -536,7 +536,6 @@ class Lanzamiento(models.Model):
         on_delete=models.CASCADE,
         related_name="lanzamientos"
     )
-    participacion_id: int | None
     numero_frame = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)]
     )
@@ -671,13 +670,9 @@ class Producto(models.Model):
     )
     tipo = models.CharField(max_length=10, choices=TIPOS)
 
-    def clean(self):
-        super().clean()
-        self.validarPrecio()
-
-    def validarPrecio(self):
-        if self.precio is not None and self.precio <= 0:
-            raise ValidationError({"precio": "El precio debe ser positivo."})
+    class Meta:
+        # Los productos salen siempre ordenados por categoria y nombre.
+        ordering = ["tipo", "nombre"]
 
     def __str__(self):
         return self.nombre
@@ -702,9 +697,6 @@ class Pedido(models.Model):
         # @transaction.atomic: todo lo de abajo es una sola operacion.
         # Si algo falla (por ejemplo el detalle), Django deshace los
         # cambios y el pedido NO queda guardado a medias.
-        if cantidad < 1:
-            raise ValidationError("La cantidad debe ser como mínimo 1.")
-
         if not self.pk:
             self.save()
 
@@ -760,16 +752,8 @@ class DetallePedido(models.Model):
         validators=[MinValueValidator(Decimal("0.01"))]
     )
 
-    def clean(self):
-        super().clean()
-        self.validarCantidad()
-
     def calcularSubtotal(self):
         return self.precio_unitario * self.cantidad
-
-    def validarCantidad(self):
-        if self.cantidad is not None and self.cantidad < 1:
-            raise ValidationError({"cantidad": "La cantidad debe ser como mínimo 1."})
 
     def __str__(self):
         return f"{self.producto} x {self.cantidad}"
